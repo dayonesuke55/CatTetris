@@ -24,6 +24,11 @@ export function bindInput(handlers) {
         e.preventDefault();
         handlers.onHardDrop?.();
         break;
+      case 'r':
+      case 'R':
+        e.preventDefault();
+        handlers.onRestart?.();
+        break;
     }
   });
 }

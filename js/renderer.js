@@ -56,9 +56,11 @@ export function drawNext(ctx, piece) {
 export function drawGameOver(ctx) {
   const { width, height } = ctx.canvas;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(0, height / 2 - 24, width, 48);
+  ctx.fillRect(0, height / 2 - 36, width, 72);
   ctx.fillStyle = '#fdf6f0';
-  ctx.font = '20px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Game Over', width / 2, height / 2 + 7);
+  ctx.font = '20px sans-serif';
+  ctx.fillText('Game Over', width / 2, height / 2);
+  ctx.font = '14px sans-serif';
+  ctx.fillText('Press R to restart', width / 2, height / 2 + 24);
 }

@@ -1,9 +1,8 @@
 // main.js — entry point and game loop.
 //
 // M1 scope: falling piece + controls + locking + spawning, plus line
-// clearing and scoring. A full game-over/restart flow (retry button,
-// etc.) is still M2's job — this file only guards against the board
-// filling up so the loop stays stable.
+// clearing and scoring. M2 adds the game-over restart flow (see
+// resetState/onRestart below).
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
@@ -17,7 +16,9 @@ const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 
-const queue = makePieceQueue();
+// Reassigned on restart so a new game gets a fresh 7-bag sequence
+// rather than continuing the previous game's bag.
+let queue = makePieceQueue();
 
 const state = {
   board: createBoard(CONFIG.COLS, CONFIG.ROWS),
@@ -28,6 +29,19 @@ const state = {
   score: 0,
   gameOver: false,
 };
+
+// Puts state back to a fresh game. Only meaningful while gameOver is
+// true — see onRestart below.
+function resetState() {
+  queue = makePieceQueue();
+  state.board = createBoard(CONFIG.COLS, CONFIG.ROWS);
+  state.current = queue.next();
+  state.next = queue.next();
+  state.dropTimer = 0;
+  state.dropInterval = CONFIG.INITIAL_DROP_MS;
+  state.score = 0;
+  state.gameOver = false;
+}
 
 function tryMove(dx, dy) {
   if (state.gameOver) return false;
@@ -61,7 +75,7 @@ function spawnNext() {
   state.next = queue.next();
   if (!isValidPosition(state.board, getCells(state.current))) {
     // Board is full where the new piece needs to appear — game over.
-    // M2 replaces this with a proper restart flow.
+    // Player restarts via resetState() (bound to the R key).
     state.gameOver = true;
   }
 }
@@ -99,6 +113,9 @@ bindInput({
   onSoftDrop: () => softDropTick(),
   onRotate: () => tryRotate(1),
   onHardDrop: () => hardDrop(),
+  onRestart: () => {
+    if (state.gameOver) resetState();
+  },
 });
 
 let lastTime = null;
