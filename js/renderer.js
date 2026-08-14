@@ -194,8 +194,10 @@ function drawNoseAndWhiskers(ctx, px, py, size) {
 
 // One full cat block: body + ears + mark + eyes + nose/whiskers, all
 // keyed off `type` alone — no piece/rotation context needed, which is
-// what lets locked board cells keep their face after landing.
-function drawCatBlock(ctx, x, y, type, size) {
+// what lets locked board cells keep their face after landing. `x`/`y`
+// are grid coordinates and may be fractional — used by main.js's
+// M4 paw-drag animation to draw a block mid-slide between columns.
+export function drawCatBlock(ctx, x, y, type, size) {
   const px = x * size;
   const py = y * size;
   const color = COLORS[type];
@@ -208,12 +210,17 @@ function drawCatBlock(ctx, x, y, type, size) {
   drawNoseAndWhiskers(ctx, px, py, size);
 }
 
-export function drawBoard(ctx, board) {
+// `skip` (optional {x, y}) omits one board cell from normal
+// rendering — used while the M4 paw-drag animation is drawing that
+// same cell itself, mid-slide, on top.
+export function drawBoard(ctx, board, skip = null) {
   ctx.fillStyle = '#1e1826';
   ctx.fillRect(0, 0, board[0].length * CONFIG.CELL_SIZE, board.length * CONFIG.CELL_SIZE);
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
-      if (cell) drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE);
+      if (!cell) return;
+      if (skip && skip.x === x && skip.y === y) return;
+      drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE);
     });
   });
 }
@@ -261,32 +268,32 @@ export function drawGameOver(ctx, score, highScore) {
   ctx.fillText('Press R to restart', width / 2, height / 2 + 32);
 }
 
-// M4: a brief paw-print flash on fx-canvas where the cat paw just
-// nudged a block. `progress` goes 0 (just happened) -> 1 (fully
-// faded); caller is responsible for clearing fx-canvas each frame and
-// dropping the effect once progress reaches 1.
-export function drawPawFlash(ctx, x, y, progress) {
-  const size = CONFIG.CELL_SIZE;
+// M4: the cat paw itself, drawn on fx-canvas — a pad + four toes,
+// large enough to read clearly over a single cell. `x`/`y` are grid
+// coordinates (x may be fractional, so it can travel smoothly across
+// columns during the reach/drag phases) and `alpha` lets the caller
+// fade it out as it retreats.
+export function drawPaw(ctx, x, y, size, alpha = 1) {
   const px = x * size + size / 2;
   const py = y * size + size / 2;
 
   ctx.save();
-  ctx.globalAlpha = Math.max(0, 1 - progress);
+  ctx.globalAlpha = Math.max(0, alpha);
   ctx.fillStyle = '#f4b6c2';
 
   ctx.beginPath();
-  ctx.ellipse(px, py + size * 0.08, size * 0.28, size * 0.22, 0, 0, Math.PI * 2);
+  ctx.ellipse(px, py + size * 0.1, size * 0.34, size * 0.27, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const toes = [
-    [-0.28, -0.22],
-    [-0.1, -0.34],
-    [0.1, -0.34],
-    [0.28, -0.22],
+    [-0.34, -0.26],
+    [-0.12, -0.42],
+    [0.12, -0.42],
+    [0.34, -0.26],
   ];
   toes.forEach(([ox, oy]) => {
     ctx.beginPath();
-    ctx.ellipse(px + ox * size, py + oy * size, size * 0.09, size * 0.11, 0, 0, Math.PI * 2);
+    ctx.ellipse(px + ox * size, py + oy * size, size * 0.11, size * 0.14, 0, 0, Math.PI * 2);
     ctx.fill();
   });
 

@@ -7,10 +7,10 @@
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
 import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
-import { drawBoard, drawPiece, drawNext, drawGameOver, drawPawFlash } from './renderer.js';
+import { drawBoard, drawPiece, drawNext, drawGameOver, drawPaw, drawCatBlock } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap } from './sound.js';
-import { tryPawSwipe } from './catPaw.js';
+import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -22,7 +22,15 @@ const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
 
-const PAW_FLASH_DURATION_MS = 450;
+// M4 paw-swipe animation phases: the paw reaches in from off-board,
+// makes contact (that's when the tap sound plays and the block starts
+// visibly sliding with it), then fades out at the destination. Split
+// into phases — rather than moving the block instantly — so the
+// shift reads as "the cat did this" instead of a sudden teleport.
+const PAW_REACH_MS = 260;
+const PAW_DRAG_MS = 220;
+const PAW_SETTLE_MS = 220;
+const PAW_TOTAL_MS = PAW_REACH_MS + PAW_DRAG_MS + PAW_SETTLE_MS;
 
 function randomPawInterval() {
   const { minIntervalMs, maxIntervalMs } = CONFIG.catPaw;
@@ -64,7 +72,7 @@ const state = {
   gameOver: false,
   pawTimer: 0,
   pawInterval: randomPawInterval(),
-  pawEffect: null, // { x, y, startedAt } while the paw-print flash is visible
+  pawAnim: null, // { plan, startedAt, contactMade, valid, mutationApplied } while a swipe is animating
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -80,7 +88,7 @@ function resetState() {
   state.gameOver = false;
   state.pawTimer = 0;
   state.pawInterval = randomPawInterval();
-  state.pawEffect = null;
+  state.pawAnim = null;
 }
 
 function tryMove(dx, dy) {
@@ -185,17 +193,67 @@ function loop(timestamp) {
       if (state.pawTimer >= state.pawInterval) {
         state.pawTimer = 0;
         state.pawInterval = randomPawInterval();
-        const result = tryPawSwipe(state.board, CONFIG.catPaw);
-        if (result) {
-          state.pawEffect = { x: result.toX, y: result.y, startedAt: timestamp };
-          playPawTap();
+        // Don't start a new swipe while one's still animating.
+        if (!state.pawAnim) {
+          const plan = planPawSwipe(state.board, CONFIG.catPaw);
+          if (plan) state.pawAnim = { plan, startedAt: timestamp, contactMade: false };
         }
       }
     }
   }
 
-  drawBoard(boardCtx, state.board);
+  // Advance any in-flight paw animation regardless of gameOver, so a
+  // swipe that was already underway always finishes cleanly instead
+  // of freezing mid-drag.
+  let pawSkipCell = null;
+  let pawDrawBlock = null;
+  let pawDraw = null;
+  if (state.pawAnim) {
+    const anim = state.pawAnim;
+    const { plan } = anim;
+    const elapsed = timestamp - anim.startedAt;
+    const direction = Math.sign(plan.toX - plan.fromX);
+    const pawEdgeX = direction > 0 ? -1 : CONFIG.COLS;
+
+    if (elapsed < PAW_REACH_MS) {
+      const t = elapsed / PAW_REACH_MS;
+      pawDraw = { x: pawEdgeX + (plan.fromX - pawEdgeX) * t, y: plan.y, alpha: 1 };
+    } else if (elapsed < PAW_REACH_MS + PAW_DRAG_MS) {
+      if (!anim.contactMade) {
+        anim.contactMade = true;
+        // Re-check right before committing to the drag visual — a
+        // line clear during the reach phase can shift rows underneath
+        // a pending plan.
+        anim.valid =
+          plan.y < state.board.length &&
+          state.board[plan.y][plan.fromX] !== null &&
+          state.board[plan.y][plan.fromX].type === plan.type &&
+          state.board[plan.y][plan.toX] === null;
+        if (anim.valid) playPawTap();
+      }
+      if (anim.valid) {
+        const t = (elapsed - PAW_REACH_MS) / PAW_DRAG_MS;
+        const blockX = plan.fromX + (plan.toX - plan.fromX) * t;
+        pawSkipCell = { x: plan.fromX, y: plan.y };
+        pawDrawBlock = { x: blockX, y: plan.y, type: plan.type };
+        pawDraw = { x: blockX, y: plan.y, alpha: 1 };
+      }
+    } else if (elapsed < PAW_TOTAL_MS) {
+      if (anim.valid && !anim.mutationApplied) {
+        anim.mutationApplied = applyPawSwipe(state.board, plan);
+      }
+      if (anim.valid) {
+        const t = (elapsed - PAW_REACH_MS - PAW_DRAG_MS) / PAW_SETTLE_MS;
+        pawDraw = { x: plan.toX, y: plan.y, alpha: 1 - t };
+      }
+    } else {
+      state.pawAnim = null;
+    }
+  }
+
+  drawBoard(boardCtx, state.board, pawSkipCell);
   drawPiece(boardCtx, state.current);
+  if (pawDrawBlock) drawCatBlock(boardCtx, pawDrawBlock.x, pawDrawBlock.y, pawDrawBlock.type, CONFIG.CELL_SIZE);
   drawNext(nextCtx, state.next);
   scoreEl.textContent = `Score: ${state.score}`;
   highScoreEl.textContent = `Best: ${state.highScore}`;
@@ -203,14 +261,7 @@ function loop(timestamp) {
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 
   fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
-  if (state.pawEffect) {
-    const progress = (timestamp - state.pawEffect.startedAt) / PAW_FLASH_DURATION_MS;
-    if (progress >= 1) {
-      state.pawEffect = null;
-    } else {
-      drawPawFlash(fxCtx, state.pawEffect.x, state.pawEffect.y, progress);
-    }
-  }
+  if (pawDraw) drawPaw(fxCtx, pawDraw.x, pawDraw.y, CONFIG.CELL_SIZE, pawDraw.alpha);
 
   requestAnimationFrame(loop);
 }
