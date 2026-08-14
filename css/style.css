@@ -1,0 +1,81 @@
+:root {
+  --bg: #2b2233;
+  --panel-bg: #3a2e46;
+  --accent: #f4b6c2;
+  --text: #fdf6f0;
+  --board-bg: #1e1826;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "Hiragino Sans", sans-serif;
+}
+
+#game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+#canvas-stack {
+  position: relative;
+  width: 300px;
+  height: 600px;
+  background: var(--board-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 0 0 4px var(--panel-bg);
+}
+
+#canvas-stack canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#fx-canvas {
+  pointer-events: none;
+}
+
+#ui-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--panel-bg);
+  border-radius: 8px;
+  min-width: 140px;
+}
+
+#score {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+#next-piece-label {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+#next-canvas {
+  background: var(--board-bg);
+  border-radius: 6px;
+}
