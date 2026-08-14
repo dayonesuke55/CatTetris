@@ -53,14 +53,16 @@ export function drawNext(ctx, piece) {
   });
 }
 
-export function drawGameOver(ctx) {
+export function drawGameOver(ctx, score, highScore) {
   const { width, height } = ctx.canvas;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  ctx.fillRect(0, height / 2 - 36, width, 72);
+  ctx.fillRect(0, height / 2 - 50, width, 100);
   ctx.fillStyle = '#fdf6f0';
   ctx.textAlign = 'center';
   ctx.font = '20px sans-serif';
-  ctx.fillText('Game Over', width / 2, height / 2);
+  ctx.fillText('Game Over', width / 2, height / 2 - 14);
   ctx.font = '14px sans-serif';
-  ctx.fillText('Press R to restart', width / 2, height / 2 + 24);
+  const isNewBest = score >= highScore && score > 0;
+  ctx.fillText(isNewBest ? `New Best: ${highScore}!` : `Best: ${highScore}`, width / 2, height / 2 + 10);
+  ctx.fillText('Press R to restart', width / 2, height / 2 + 32);
 }

@@ -15,6 +15,28 @@ const boardCtx = boardCanvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const highScoreEl = document.getElementById('high-score');
+const restartBtn = document.getElementById('restart-btn');
+
+const HIGH_SCORE_KEY = 'cattetris-high-score';
+
+// localStorage can throw (privacy mode, disabled storage, etc.) — a
+// missing high score isn't worth crashing the game over.
+function loadHighScore() {
+  try {
+    return Number(localStorage.getItem(HIGH_SCORE_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveHighScore(value) {
+  try {
+    localStorage.setItem(HIGH_SCORE_KEY, String(value));
+  } catch {
+    // non-critical — just means the best score won't persist this time.
+  }
+}
 
 // Reassigned on restart so a new game gets a fresh 7-bag sequence
 // rather than continuing the previous game's bag.
@@ -27,6 +49,7 @@ const state = {
   dropTimer: 0,
   dropInterval: CONFIG.INITIAL_DROP_MS,
   score: 0,
+  highScore: loadHighScore(),
   gameOver: false,
 };
 
@@ -75,8 +98,12 @@ function spawnNext() {
   state.next = queue.next();
   if (!isValidPosition(state.board, getCells(state.current))) {
     // Board is full where the new piece needs to appear — game over.
-    // Player restarts via resetState() (bound to the R key).
+    // Player restarts via resetState() (bound to the R key / restart button).
     state.gameOver = true;
+    if (state.score > state.highScore) {
+      state.highScore = state.score;
+      saveHighScore(state.highScore);
+    }
   }
 }
 
@@ -118,6 +145,10 @@ bindInput({
   },
 });
 
+restartBtn.addEventListener('click', () => {
+  if (state.gameOver) resetState();
+});
+
 let lastTime = null;
 function loop(timestamp) {
   if (lastTime === null) lastTime = timestamp;
@@ -136,7 +167,9 @@ function loop(timestamp) {
   drawPiece(boardCtx, state.current);
   drawNext(nextCtx, state.next);
   scoreEl.textContent = `Score: ${state.score}`;
-  if (state.gameOver) drawGameOver(boardCtx);
+  highScoreEl.textContent = `Best: ${state.highScore}`;
+  restartBtn.classList.toggle('hidden', !state.gameOver);
+  if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 
   requestAnimationFrame(loop);
 }

@@ -70,6 +70,12 @@ h1 {
   font-weight: bold;
 }
 
+#high-score {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  margin-top: -4px;
+}
+
 #next-piece-label {
   font-size: 0.85rem;
   opacity: 0.8;
@@ -78,4 +84,23 @@ h1 {
 #next-canvas {
   background: var(--board-bg);
   border-radius: 6px;
+}
+
+#restart-btn {
+  font: inherit;
+  font-weight: bold;
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--board-bg);
+  cursor: pointer;
+}
+
+#restart-btn:hover {
+  filter: brightness(1.08);
+}
+
+.hidden {
+  display: none;
 }
