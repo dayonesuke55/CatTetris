@@ -1,18 +1,18 @@
 // renderer.js — pure drawing functions. No game logic lives here; every
 // function takes state and paints it.
 //
-// M3: blocks are drawn as a procedural "cat blob" rather than flat
-// squares. Given a piece's actual cell layout (any rotation), we pick
-// a head cell (topmost, then leftmost) and a tail cell (bottommost,
-// then rightmost) and decorate those — this needs no per-type,
-// per-rotation art and can't visually break under rotation, unlike
-// hand-drawn pose illustrations. Locked cells on the board no longer
-// carry their original piece grouping (see board.js), so they only
-// get the plain rounded block — face/tail decoration is reserved for
-// the falling piece and the NEXT preview.
+// M3: every single block — falling, in the NEXT preview, or already
+// locked into the stack — is drawn as one small cat face, using
+// piece.js's COLORS (fur tint) and CAT_STYLES (ear/eye/mark shape) for
+// the type. Earlier this file only decorated a piece's "head" cell and
+// left a tail on its "tail" cell, but that information dies once a
+// piece locks (board.js stores per-cell type, not per-piece grouping)
+// — faces would vanish into flat blocks the moment they landed. Facing
+// every cell independently needs nothing but the cell's own type, so
+// it works identically for locked, falling, and preview cells.
 
 import { CONFIG } from './config.js';
-import { COLORS, getCells } from './piece.js';
+import { COLORS, CAT_STYLES, getCells } from './piece.js';
 
 const EYE_COLOR = '#2b2233';
 const NOSE_COLOR = '#f4b6c2';
@@ -37,14 +37,9 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// A single "plush" cell — the shared visual unit for both locked
-// board cells and (decorated further below) live piece cells. Every
-// cell gets a lighter "belly patch" derived from its fur color, the
-// same two-tone look real cats have on their chest/belly/paws, rather
-// than a flat fill.
-function drawBlock(ctx, x, y, color, size = CONFIG.CELL_SIZE) {
-  const px = x * size;
-  const py = y * size;
+// The "plush" cell body, shared by every block. A lighter belly-patch
+// ellipse gives it a two-tone cat-fur look instead of a flat fill.
+function drawBlockBody(ctx, px, py, size, color) {
   const pad = size * 0.05;
   roundRectPath(ctx, px + pad, py + pad, size - pad * 2, size - pad * 2, size * 0.22);
   ctx.fillStyle = color;
@@ -56,33 +51,125 @@ function drawBlock(ctx, x, y, color, size = CONFIG.CELL_SIZE) {
   ctx.fill();
 }
 
-// Ears/eyes/nose/whiskers centered on one grid cell.
-function drawCatFace(ctx, cellX, cellY, size, color) {
-  const px = cellX * size;
-  const py = cellY * size;
+function drawEars(ctx, px, py, size, color, shape) {
+  const dark = shade(color, -0.15);
+  if (shape === 'round') {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(px + size * 0.24, py + size * 0.14, size * 0.15, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(px + size * 0.76, py + size * 0.14, size * 0.15, Math.PI, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'folded') {
+    // Small flattened bumps close to the head, like a Scottish Fold.
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(px + size * 0.26, py + size * 0.12, size * 0.13, size * 0.07, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(px + size * 0.74, py + size * 0.12, size * 0.13, size * 0.07, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 'pointed' (default) and 'tufted' both start as a triangle.
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(px + size * 0.1, py + size * 0.18);
+    ctx.lineTo(px + size * 0.27, py - size * 0.08);
+    ctx.lineTo(px + size * 0.4, py + size * 0.16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(px + size * 0.6, py + size * 0.16);
+    ctx.lineTo(px + size * 0.73, py - size * 0.08);
+    ctx.lineTo(px + size * 0.9, py + size * 0.18);
+    ctx.closePath();
+    ctx.fill();
 
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(px + size * 0.1, py + size * 0.18);
-  ctx.lineTo(px + size * 0.27, py - size * 0.08);
-  ctx.lineTo(px + size * 0.4, py + size * 0.16);
-  ctx.closePath();
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(px + size * 0.6, py + size * 0.16);
-  ctx.lineTo(px + size * 0.73, py - size * 0.08);
-  ctx.lineTo(px + size * 0.9, py + size * 0.18);
-  ctx.closePath();
-  ctx.fill();
+    if (shape === 'tufted') {
+      ctx.strokeStyle = dark;
+      ctx.lineWidth = Math.max(1, size * 0.025);
+      ctx.beginPath();
+      ctx.moveTo(px + size * 0.27, py - size * 0.08);
+      ctx.lineTo(px + size * 0.24, py - size * 0.18);
+      ctx.moveTo(px + size * 0.73, py - size * 0.08);
+      ctx.lineTo(px + size * 0.76, py - size * 0.18);
+      ctx.stroke();
+    }
+  }
+}
 
-  ctx.fillStyle = EYE_COLOR;
-  ctx.beginPath();
-  ctx.arc(px + size * 0.35, py + size * 0.5, size * 0.06, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(px + size * 0.65, py + size * 0.5, size * 0.06, 0, Math.PI * 2);
-  ctx.fill();
+function drawEyes(ctx, px, py, size, shape) {
+  const leftX = px + size * 0.35;
+  const rightX = px + size * 0.65;
+  const eyeY = py + size * 0.5;
 
+  if (shape === 'sleepy') {
+    ctx.strokeStyle = EYE_COLOR;
+    ctx.lineWidth = Math.max(1, size * 0.045);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(leftX, eyeY, size * 0.07, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(rightX, eyeY, size * 0.07, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+  } else if (shape === 'slant') {
+    ctx.fillStyle = EYE_COLOR;
+    ctx.save();
+    ctx.translate(leftX, eyeY);
+    ctx.rotate(-0.35);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.075, size * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(rightX, eyeY);
+    ctx.rotate(0.35);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.075, size * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else {
+    // 'round' (default)
+    ctx.fillStyle = EYE_COLOR;
+    ctx.beginPath();
+    ctx.arc(leftX, eyeY, size * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(rightX, eyeY, size * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Drawn before eyes/nose so it sits underneath them, like real fur
+// markings would.
+function drawMark(ctx, px, py, size, color, shape) {
+  const dark = shade(color, -0.16);
+  if (shape === 'mask') {
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.ellipse(px + size * 0.5, py + size * 0.52, size * 0.3, size * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (shape === 'stripes') {
+    ctx.strokeStyle = dark;
+    ctx.lineWidth = Math.max(1, size * 0.04);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px + size * 0.5, py + size * 0.15);
+    ctx.lineTo(px + size * 0.4, py + size * 0.32);
+    ctx.moveTo(px + size * 0.5, py + size * 0.15);
+    ctx.lineTo(px + size * 0.6, py + size * 0.32);
+    ctx.stroke();
+  } else if (shape === 'patch') {
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.arc(px + size * 0.65, py + size * 0.46, size * 0.14, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawNoseAndWhiskers(ctx, px, py, size) {
   ctx.fillStyle = NOSE_COLOR;
   ctx.beginPath();
   ctx.moveTo(px + size * 0.45, py + size * 0.62);
@@ -94,69 +181,31 @@ function drawCatFace(ctx, cellX, cellY, size, color) {
   ctx.strokeStyle = 'rgba(43, 34, 51, 0.55)';
   ctx.lineWidth = Math.max(1, size * 0.025);
   ctx.beginPath();
-  ctx.moveTo(px + size * 0.03, py + size * 0.58);
-  ctx.lineTo(px + size * 0.3, py + size * 0.6);
+  ctx.moveTo(px + size * 0.03, py + size * 0.6);
+  ctx.lineTo(px + size * 0.3, py + size * 0.62);
   ctx.moveTo(px + size * 0.03, py + size * 0.7);
-  ctx.lineTo(px + size * 0.3, py + size * 0.66);
-  ctx.moveTo(px + size * 0.97, py + size * 0.58);
-  ctx.lineTo(px + size * 0.7, py + size * 0.6);
+  ctx.lineTo(px + size * 0.3, py + size * 0.68);
+  ctx.moveTo(px + size * 0.97, py + size * 0.6);
+  ctx.lineTo(px + size * 0.7, py + size * 0.62);
   ctx.moveTo(px + size * 0.97, py + size * 0.7);
-  ctx.lineTo(px + size * 0.7, py + size * 0.66);
+  ctx.lineTo(px + size * 0.7, py + size * 0.68);
   ctx.stroke();
 }
 
-// A curved tail poking outward from the tail cell, away from the
-// body — (dirX, dirY) is a unit-ish direction from head to tail.
-function drawCatTail(ctx, cellX, cellY, size, dirX, dirY, color) {
-  const cx = cellX * size + size / 2;
-  const cy = cellY * size + size / 2;
-  const endX = cx + dirX * size * 0.9;
-  const endY = cy + dirY * size * 0.9;
-  // Curl the tail sideways relative to its direction of travel.
-  const curlX = cx + dirX * size * 0.55 - dirY * size * 0.35;
-  const curlY = cy + dirY * size * 0.55 + dirX * size * 0.35;
+// One full cat block: body + ears + mark + eyes + nose/whiskers, all
+// keyed off `type` alone — no piece/rotation context needed, which is
+// what lets locked board cells keep their face after landing.
+function drawCatBlock(ctx, x, y, type, size) {
+  const px = x * size;
+  const py = y * size;
+  const color = COLORS[type];
+  const style = CAT_STYLES[type];
 
-  ctx.strokeStyle = color;
-  ctx.lineWidth = size * 0.2;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.quadraticCurveTo(curlX, curlY, endX, endY);
-  ctx.stroke();
-}
-
-// Topmost-then-leftmost cell is the "head"; bottommost-then-rightmost
-// is the "tail". Deterministic for any rotation state, so it never
-// needs a per-shape lookup table.
-function pickHeadAndTail(cells) {
-  let head = cells[0];
-  let tail = cells[0];
-  for (const c of cells) {
-    if (c.y < head.y || (c.y === head.y && c.x < head.x)) head = c;
-    if (c.y > tail.y || (c.y === tail.y && c.x > tail.x)) tail = c;
-  }
-  return { head, tail };
-}
-
-function tailDirection(head, tail) {
-  const dx = tail.x - head.x;
-  const dy = tail.y - head.y;
-  if (dx === 0 && dy === 0) return { x: 0, y: 1 };
-  return Math.abs(dx) >= Math.abs(dy)
-    ? { x: Math.sign(dx), y: 0 }
-    : { x: 0, y: Math.sign(dy) };
-}
-
-// Draws a full decorated piece (body + face + tail) given cells
-// already in the target coordinate system. Shared by drawPiece
-// (board grid) and drawNext (its own small preview grid).
-function drawCatPieceCells(ctx, cells, color, size) {
-  if (cells.length === 0) return;
-  const { head, tail } = pickHeadAndTail(cells);
-  const dir = tailDirection(head, tail);
-  cells.forEach(({ x, y }) => drawBlock(ctx, x, y, color, size));
-  drawCatTail(ctx, tail.x, tail.y, size, dir.x, dir.y, shade(color, -0.18));
-  drawCatFace(ctx, head.x, head.y, size, color);
+  drawBlockBody(ctx, px, py, size, color);
+  drawEars(ctx, px, py, size, color, style.ear);
+  drawMark(ctx, px, py, size, color, style.mark);
+  drawEyes(ctx, px, py, size, style.eye);
+  drawNoseAndWhiskers(ctx, px, py, size);
 }
 
 export function drawBoard(ctx, board) {
@@ -164,27 +213,16 @@ export function drawBoard(ctx, board) {
   ctx.fillRect(0, 0, board[0].length * CONFIG.CELL_SIZE, board.length * CONFIG.CELL_SIZE);
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
-      if (cell) drawBlock(ctx, x, y, COLORS[cell.type]);
+      if (cell) drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE);
     });
   });
 }
 
 export function drawPiece(ctx, piece) {
   if (!piece) return;
-  const cells = getCells(piece);
-  const visibleCells = cells.filter((c) => c.y >= 0);
-  if (visibleCells.length === 0) return;
-
-  // Anatomy is picked from the full (possibly partly off-board) shape
-  // so head/tail placement stays stable as the piece enters play, but
-  // only the visible portion is actually painted.
-  const { head, tail } = pickHeadAndTail(cells);
-  const dir = tailDirection(head, tail);
-  const color = COLORS[piece.type];
-
-  visibleCells.forEach(({ x, y }) => drawBlock(ctx, x, y, color));
-  if (tail.y >= 0) drawCatTail(ctx, tail.x, tail.y, CONFIG.CELL_SIZE, dir.x, dir.y, shade(color, -0.18));
-  if (head.y >= 0) drawCatFace(ctx, head.x, head.y, CONFIG.CELL_SIZE, color);
+  getCells(piece).forEach(({ x, y }) => {
+    if (y >= 0) drawCatBlock(ctx, x, y, piece.type, CONFIG.CELL_SIZE);
+  });
 }
 
 // Draws the next piece centered in its own small preview canvas.
@@ -205,7 +243,7 @@ export function drawNext(ctx, piece) {
 
   ctx.save();
   ctx.translate(offsetX, offsetY);
-  drawCatPieceCells(ctx, localCells, COLORS[piece.type], size);
+  localCells.forEach(({ x, y }) => drawCatBlock(ctx, x, y, piece.type, size));
   ctx.restore();
 }
 

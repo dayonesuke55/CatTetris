@@ -28,6 +28,22 @@ export const COLORS = {
   L: '#f0b06a',
 };
 
+// "Breed" per type — every single block is drawn as one cat face
+// (see renderer.js), so this is what makes each of the 7 types read
+// as a different cat rather than 7 copies of the same face in
+// different colors. ear: 'pointed' | 'round' | 'tufted' | 'folded'.
+// eye: 'round' | 'sleepy' | 'slant'. mark: 'none' | 'mask' | 'stripes'
+// | 'patch'.
+export const CAT_STYLES = {
+  I: { ear: 'pointed', eye: 'slant', mark: 'mask' }, // siamese
+  O: { ear: 'round', eye: 'sleepy', mark: 'none' }, // sleepy round face
+  T: { ear: 'pointed', eye: 'round', mark: 'stripes' }, // classic tabby
+  S: { ear: 'tufted', eye: 'round', mark: 'patch' }, // lynx-point, eye patch
+  Z: { ear: 'folded', eye: 'slant', mark: 'patch' }, // scottish fold, eye patch
+  J: { ear: 'pointed', eye: 'round', mark: 'mask' }, // dark-eared siamese-ish
+  L: { ear: 'round', eye: 'round', mark: 'stripes' }, // orange tabby
+};
+
 const SHAPES = {
   I: [
     [[0, 1], [1, 1], [2, 1], [3, 1]],
