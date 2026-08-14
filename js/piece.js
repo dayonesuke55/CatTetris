@@ -12,16 +12,19 @@ import { CONFIG } from './config.js';
 
 export const PIECE_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 
-// Placeholder colors — M3 replaces the block rendering with cat-pose
-// drawings, but pieces stay tagged by `type` so that swap only touches
-// renderer.js.
+// Fur colors — one pastel hue per type, chosen to stay clearly
+// distinguishable at a glance (same hue-separation as classic Tetris
+// coloring: I=cyan, O=yellow, T=purple, S=green, Z=red, J=blue,
+// L=orange) while matching the game's pastel/pink palette. renderer.js
+// derives a lighter "belly patch" shade from each of these at draw
+// time rather than storing a second color per type here.
 export const COLORS = {
   I: '#7dd3f0',
   O: '#f5e37b',
   T: '#c99bf0',
   S: '#8fe0a0',
   Z: '#f0908f',
-  J: '#8fa8f0',
+  J: '#7b8ff2',
   L: '#f0b06a',
 };
 

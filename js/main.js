@@ -9,6 +9,7 @@ import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from 
 import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
 import { drawBoard, drawPiece, drawNext, drawGameOver } from './renderer.js';
 import { bindInput } from './input.js';
+import { playMeow } from './sound.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -114,6 +115,7 @@ function lockCurrentPiece() {
   if (fullRows.length > 0) {
     clearRows(state.board, fullRows);
     state.score += CONFIG.LINE_SCORES[fullRows.length] ?? 0;
+    playMeow(fullRows.length);
   }
 
   spawnNext();

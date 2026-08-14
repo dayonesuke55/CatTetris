@@ -38,13 +38,21 @@ function roundRectPath(ctx, x, y, w, h, r) {
 }
 
 // A single "plush" cell — the shared visual unit for both locked
-// board cells and (decorated further below) live piece cells.
+// board cells and (decorated further below) live piece cells. Every
+// cell gets a lighter "belly patch" derived from its fur color, the
+// same two-tone look real cats have on their chest/belly/paws, rather
+// than a flat fill.
 function drawBlock(ctx, x, y, color, size = CONFIG.CELL_SIZE) {
   const px = x * size;
   const py = y * size;
   const pad = size * 0.05;
   roundRectPath(ctx, px + pad, py + pad, size - pad * 2, size - pad * 2, size * 0.22);
   ctx.fillStyle = color;
+  ctx.fill();
+
+  ctx.fillStyle = shade(color, 0.22);
+  ctx.beginPath();
+  ctx.ellipse(px + size * 0.5, py + size * 0.7, size * 0.26, size * 0.16, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
