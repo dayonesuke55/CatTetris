@@ -268,19 +268,35 @@ export function drawGameOver(ctx, score, highScore) {
   ctx.fillText('Press R to restart', width / 2, height / 2 + 32);
 }
 
-// M4: the cat paw itself, drawn on fx-canvas — a pad + four toes,
-// large enough to read clearly over a single cell. `x`/`y` are grid
-// coordinates (x may be fractional, so it can travel smoothly across
-// columns during the reach/drag phases) and `alpha` lets the caller
-// fade it out as it retreats.
-export function drawPaw(ctx, x, y, size, alpha = 1) {
-  const px = x * size + size / 2;
-  const py = y * size + size / 2;
+const PAW_FUR_COLOR = '#d9c2a8';
+const PAW_PAD_COLOR = '#f4b6c2';
+
+// M4: an actual cat leg reaching in — a thick fur-colored limb
+// stretching from off fx-canvas's edge up to a pink paw pad with
+// toes, big enough to unmistakably read as "a cat is doing this from
+// outside the screen" rather than a small icon. `px`/`py` are plain
+// pixel coordinates in fx-canvas's own space (which is wider than the
+// board and extends past its edges — see index.html/style.css), so
+// the caller owns all the column/margin math. `fromLeft` picks which
+// canvas edge the arm trails off toward. `alpha` fades it on retreat.
+export function drawPaw(ctx, px, py, fromLeft, alpha = 1) {
+  const size = 78; // reference scale for the pad/toes/arm below
 
   ctx.save();
   ctx.globalAlpha = Math.max(0, alpha);
-  ctx.fillStyle = '#f4b6c2';
 
+  // The leg: a thick rounded stroke from off-canvas to the paw.
+  const edgeX = fromLeft ? -40 : ctx.canvas.width + 40;
+  ctx.strokeStyle = PAW_FUR_COLOR;
+  ctx.lineWidth = size * 0.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(edgeX, py);
+  ctx.lineTo(px, py);
+  ctx.stroke();
+
+  // Paw pad + four toes on top of the leg's end.
+  ctx.fillStyle = PAW_PAD_COLOR;
   ctx.beginPath();
   ctx.ellipse(px, py + size * 0.1, size * 0.34, size * 0.27, 0, 0, Math.PI * 2);
   ctx.fill();

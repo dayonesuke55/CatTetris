@@ -38,6 +38,14 @@ h1 {
   position: relative;
   width: 300px;
   height: 600px;
+  /* visible (not hidden): fx-canvas is deliberately wider than the
+     board so the M4 cat paw can be seen reaching in from outside the
+     play area. The board itself still looks framed/rounded via its
+     own border-radius below. */
+  overflow: visible;
+}
+
+#board-canvas {
   background: var(--board-bg);
   border-radius: 8px;
   overflow: hidden;
@@ -51,6 +59,7 @@ h1 {
 }
 
 #fx-canvas {
+  left: -90px;
   pointer-events: none;
 }
 

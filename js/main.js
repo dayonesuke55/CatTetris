@@ -22,14 +22,33 @@ const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
 
-// M4 paw-swipe animation phases: the paw reaches in from off-board,
-// makes contact (that's when the tap sound plays and the block starts
-// visibly sliding with it), then fades out at the destination. Split
-// into phases — rather than moving the block instantly — so the
-// shift reads as "the cat did this" instead of a sudden teleport.
-const PAW_REACH_MS = 260;
+// fx-canvas is wider than the board (see index.html) so the M4 cat
+// paw can visibly reach in from beyond the play area instead of
+// popping in right at its edge. fxMarginPx is derived from the actual
+// canvas width rather than duplicating a hardcoded number, and we set
+// fx-canvas's CSS offset from it too, so the HTML width attribute is
+// the one place this is ever tuned.
+const boardWidthPx = CONFIG.COLS * CONFIG.CELL_SIZE;
+const fxMarginPx = (fxCanvas.width - boardWidthPx) / 2;
+const fxMarginCols = fxMarginPx / CONFIG.CELL_SIZE;
+fxCanvas.style.left = `-${fxMarginPx}px`;
+
+function fxCellCenterX(gridX) {
+  return fxMarginPx + gridX * CONFIG.CELL_SIZE + CONFIG.CELL_SIZE / 2;
+}
+function fxCellCenterY(gridY) {
+  return gridY * CONFIG.CELL_SIZE + CONFIG.CELL_SIZE / 2;
+}
+
+// M4 paw-swipe animation phases: the paw reaches in from well outside
+// the board, makes contact (that's when the tap sound plays and the
+// block starts visibly sliding with it), then fades out at the
+// destination. Split into phases — rather than moving the block
+// instantly — so the shift reads as "the cat did this" instead of a
+// sudden teleport.
+const PAW_REACH_MS = 320;
 const PAW_DRAG_MS = 220;
-const PAW_SETTLE_MS = 220;
+const PAW_SETTLE_MS = 240;
 const PAW_TOTAL_MS = PAW_REACH_MS + PAW_DRAG_MS + PAW_SETTLE_MS;
 
 function randomPawInterval() {
@@ -213,11 +232,15 @@ function loop(timestamp) {
     const { plan } = anim;
     const elapsed = timestamp - anim.startedAt;
     const direction = Math.sign(plan.toX - plan.fromX);
-    const pawEdgeX = direction > 0 ? -1 : CONFIG.COLS;
+    // Paw enters from the side the block is moving away from (behind
+    // it), then pushes it forward — reads as a deliberate shove.
+    const fromLeft = direction > 0;
+    const reachStartGridX = direction > 0 ? -fxMarginCols : CONFIG.COLS + fxMarginCols;
 
     if (elapsed < PAW_REACH_MS) {
       const t = elapsed / PAW_REACH_MS;
-      pawDraw = { x: pawEdgeX + (plan.fromX - pawEdgeX) * t, y: plan.y, alpha: 1 };
+      const gridX = reachStartGridX + (plan.fromX - reachStartGridX) * t;
+      pawDraw = { px: fxCellCenterX(gridX), py: fxCellCenterY(plan.y), fromLeft, alpha: 1 };
     } else if (elapsed < PAW_REACH_MS + PAW_DRAG_MS) {
       if (!anim.contactMade) {
         anim.contactMade = true;
@@ -233,10 +256,10 @@ function loop(timestamp) {
       }
       if (anim.valid) {
         const t = (elapsed - PAW_REACH_MS) / PAW_DRAG_MS;
-        const blockX = plan.fromX + (plan.toX - plan.fromX) * t;
+        const gridX = plan.fromX + (plan.toX - plan.fromX) * t;
         pawSkipCell = { x: plan.fromX, y: plan.y };
-        pawDrawBlock = { x: blockX, y: plan.y, type: plan.type };
-        pawDraw = { x: blockX, y: plan.y, alpha: 1 };
+        pawDrawBlock = { x: gridX, y: plan.y, type: plan.type };
+        pawDraw = { px: fxCellCenterX(gridX), py: fxCellCenterY(plan.y), fromLeft, alpha: 1 };
       }
     } else if (elapsed < PAW_TOTAL_MS) {
       if (anim.valid && !anim.mutationApplied) {
@@ -244,7 +267,7 @@ function loop(timestamp) {
       }
       if (anim.valid) {
         const t = (elapsed - PAW_REACH_MS - PAW_DRAG_MS) / PAW_SETTLE_MS;
-        pawDraw = { x: plan.toX, y: plan.y, alpha: 1 - t };
+        pawDraw = { px: fxCellCenterX(plan.toX), py: fxCellCenterY(plan.y), fromLeft, alpha: 1 - t };
       }
     } else {
       state.pawAnim = null;
@@ -261,7 +284,7 @@ function loop(timestamp) {
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 
   fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
-  if (pawDraw) drawPaw(fxCtx, pawDraw.x, pawDraw.y, CONFIG.CELL_SIZE, pawDraw.alpha);
+  if (pawDraw) drawPaw(fxCtx, pawDraw.px, pawDraw.py, pawDraw.fromLeft, pawDraw.alpha);
 
   requestAnimationFrame(loop);
 }
