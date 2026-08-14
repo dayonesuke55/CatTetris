@@ -260,3 +260,35 @@ export function drawGameOver(ctx, score, highScore) {
   ctx.fillText(isNewBest ? `New Best: ${highScore}!` : `Best: ${highScore}`, width / 2, height / 2 + 10);
   ctx.fillText('Press R to restart', width / 2, height / 2 + 32);
 }
+
+// M4: a brief paw-print flash on fx-canvas where the cat paw just
+// nudged a block. `progress` goes 0 (just happened) -> 1 (fully
+// faded); caller is responsible for clearing fx-canvas each frame and
+// dropping the effect once progress reaches 1.
+export function drawPawFlash(ctx, x, y, progress) {
+  const size = CONFIG.CELL_SIZE;
+  const px = x * size + size / 2;
+  const py = y * size + size / 2;
+
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, 1 - progress);
+  ctx.fillStyle = '#f4b6c2';
+
+  ctx.beginPath();
+  ctx.ellipse(px, py + size * 0.08, size * 0.28, size * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  const toes = [
+    [-0.28, -0.22],
+    [-0.1, -0.34],
+    [0.1, -0.34],
+    [0.28, -0.22],
+  ];
+  toes.forEach(([ox, oy]) => {
+    ctx.beginPath();
+    ctx.ellipse(px + ox * size, py + oy * size, size * 0.09, size * 0.11, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.restore();
+}

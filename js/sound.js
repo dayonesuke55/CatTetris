@@ -45,3 +45,29 @@ export function playMeow(intensity = 1) {
   osc.start(now);
   osc.stop(now + duration + 0.02);
 }
+
+// A soft, low "boop" for the M4 cat-paw gimmick nudging a block —
+// deliberately understated (this is mischief, not an achievement).
+export function playPawTap() {
+  const audioCtx = getContext();
+  if (!audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  const duration = 0.16;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.frequency.setValueAtTime(210, now);
+  osc.frequency.exponentialRampToValueAtTime(105, now + duration);
+
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.28, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}

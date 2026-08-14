@@ -7,17 +7,27 @@
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
 import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
-import { drawBoard, drawPiece, drawNext, drawGameOver } from './renderer.js';
+import { drawBoard, drawPiece, drawNext, drawGameOver, drawPawFlash } from './renderer.js';
 import { bindInput } from './input.js';
-import { playMeow } from './sound.js';
+import { playMeow, playPawTap } from './sound.js';
+import { tryPawSwipe } from './catPaw.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
+const fxCanvas = document.getElementById('fx-canvas');
+const fxCtx = fxCanvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
+
+const PAW_FLASH_DURATION_MS = 450;
+
+function randomPawInterval() {
+  const { minIntervalMs, maxIntervalMs } = CONFIG.catPaw;
+  return minIntervalMs + Math.random() * (maxIntervalMs - minIntervalMs);
+}
 
 const HIGH_SCORE_KEY = 'cattetris-high-score';
 
@@ -52,6 +62,9 @@ const state = {
   score: 0,
   highScore: loadHighScore(),
   gameOver: false,
+  pawTimer: 0,
+  pawInterval: randomPawInterval(),
+  pawEffect: null, // { x, y, startedAt } while the paw-print flash is visible
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -65,6 +78,9 @@ function resetState() {
   state.dropInterval = CONFIG.INITIAL_DROP_MS;
   state.score = 0;
   state.gameOver = false;
+  state.pawTimer = 0;
+  state.pawInterval = randomPawInterval();
+  state.pawEffect = null;
 }
 
 function tryMove(dx, dy) {
@@ -163,6 +179,19 @@ function loop(timestamp) {
       state.dropTimer = 0;
       softDropTick();
     }
+
+    if (CONFIG.catPaw.enabled) {
+      state.pawTimer += dt;
+      if (state.pawTimer >= state.pawInterval) {
+        state.pawTimer = 0;
+        state.pawInterval = randomPawInterval();
+        const result = tryPawSwipe(state.board, CONFIG.catPaw);
+        if (result) {
+          state.pawEffect = { x: result.toX, y: result.y, startedAt: timestamp };
+          playPawTap();
+        }
+      }
+    }
   }
 
   drawBoard(boardCtx, state.board);
@@ -172,6 +201,16 @@ function loop(timestamp) {
   highScoreEl.textContent = `Best: ${state.highScore}`;
   restartBtn.classList.toggle('hidden', !state.gameOver);
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
+
+  fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+  if (state.pawEffect) {
+    const progress = (timestamp - state.pawEffect.startedAt) / PAW_FLASH_DURATION_MS;
+    if (progress >= 1) {
+      state.pawEffect = null;
+    } else {
+      drawPawFlash(fxCtx, state.pawEffect.x, state.pawEffect.y, progress);
+    }
+  }
 
   requestAnimationFrame(loop);
 }

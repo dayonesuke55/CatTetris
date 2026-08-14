@@ -12,9 +12,17 @@ export const CONFIG = {
   // isn't wired to anything yet.
   LINE_SCORES: [0, 100, 300, 500, 800],
 
-  // Filled in at M4 — cat paw gimmick tuning lives here so it can be
-  // adjusted (or disabled) without touching catPaw.js itself.
+  // M4: cat paw gimmick. Fires on a random timer between the two
+  // interval bounds and slides one locked cell sideways by 1-2
+  // columns (see catPaw.js). safeTopRows keeps it away from the
+  // spawn area entirely — it only ever picks a row at y >=
+  // safeTopRows, as both the source and destination of a shift are in
+  // the same row, so this one bound guarantees the piece-spawn zone
+  // is never touched.
   catPaw: {
-    enabled: false,
+    enabled: true,
+    minIntervalMs: 15000,
+    maxIntervalMs: 30000,
+    safeTopRows: 2,
   },
 };
