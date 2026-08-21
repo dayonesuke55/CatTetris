@@ -92,6 +92,12 @@ h1 {
   margin-top: -4px;
 }
 
+#affection-count {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
 #next-piece-label {
   font-size: 0.85rem;
   opacity: 0.8;

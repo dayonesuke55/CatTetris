@@ -6,11 +6,12 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
+import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES } from './piece.js';
 import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
+import { loadAffection, saveAffection, recordLineClear, isAffectionate } from './affection.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -20,6 +21,7 @@ const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
+const affectionEl = document.getElementById('affection-count');
 const restartBtn = document.getElementById('restart-btn');
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
@@ -92,6 +94,10 @@ const state = {
   pawTimer: 0,
   pawInterval: randomPawInterval(),
   pawAnim: null, // { plan, startedAt, contactMade, valid, mutationApplied } while a swipe is animating
+  // M6: per-type affection ({ I: 0, O: 0, ... }), loaded once here and
+  // never touched by resetState() below — like highScore, it's a
+  // slow-building meta stat across games, not a per-run one.
+  affection: loadAffection(),
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -169,6 +175,10 @@ function lockCurrentPiece() {
 
   const fullRows = getFullRows(state.board);
   if (fullRows.length > 0) {
+    // Must run before clearRows() mutates the board — it reads which
+    // types were actually in the cleared rows.
+    recordLineClear(state.affection, state.board, fullRows);
+    saveAffection(state.affection);
     clearRows(state.board, fullRows);
     state.score += CONFIG.LINE_SCORES[fullRows.length] ?? 0;
     playMeow(fullRows.length);
@@ -287,13 +297,28 @@ function loop(timestamp) {
     }
   }
 
-  drawBoard(boardCtx, state.board, pawSkipCell);
+  // M6: which types currently get the affection heart. Recomputed each
+  // frame — cheap (7 entries) and keeps this in sync the instant a
+  // line clear pushes a type over the threshold.
+  const affectionateTypes = new Set(PIECE_TYPES.filter((type) => isAffectionate(state.affection, type)));
+
+  drawBoard(boardCtx, state.board, pawSkipCell, affectionateTypes);
   if (!state.gameOver) drawGhost(boardCtx, state.current, getGhostY(state.current), CONFIG.CELL_SIZE);
-  drawPiece(boardCtx, state.current);
-  if (pawDrawBlock) drawCatBlock(boardCtx, pawDrawBlock.x, pawDrawBlock.y, pawDrawBlock.type, CONFIG.CELL_SIZE);
-  drawNext(nextCtx, state.next);
+  drawPiece(boardCtx, state.current, affectionateTypes);
+  if (pawDrawBlock) {
+    drawCatBlock(
+      boardCtx,
+      pawDrawBlock.x,
+      pawDrawBlock.y,
+      pawDrawBlock.type,
+      CONFIG.CELL_SIZE,
+      affectionateTypes.has(pawDrawBlock.type)
+    );
+  }
+  drawNext(nextCtx, state.next, affectionateTypes);
   scoreEl.textContent = `Score: ${state.score}`;
   highScoreEl.textContent = `Best: ${state.highScore}`;
+  affectionEl.textContent = `Affectionate: ${affectionateTypes.size}/${PIECE_TYPES.length}`;
   restartBtn.classList.toggle('hidden', !state.gameOver);
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 

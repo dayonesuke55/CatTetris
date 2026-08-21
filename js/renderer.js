@@ -192,12 +192,42 @@ function drawNoseAndWhiskers(ctx, px, py, size) {
   ctx.stroke();
 }
 
+const HEART_COLOR = '#ff6b81';
+
+// M6: a small heart above the head, drawn for a type once it's
+// "affectionate" (see affection.js). Standard canvas heart-path trick
+// (two rounded lobes + a bezier point) rather than a shape library —
+// `cx`/`topY` is the point centered between the ears, just above them.
+function drawHeart(ctx, cx, topY, size) {
+  const s = size * 0.22;
+  const topCurveHeight = s * 0.3;
+  ctx.fillStyle = HEART_COLOR;
+  ctx.beginPath();
+  ctx.moveTo(cx, topY + topCurveHeight);
+  ctx.bezierCurveTo(cx, topY, cx - s / 2, topY, cx - s / 2, topY + topCurveHeight);
+  ctx.bezierCurveTo(
+    cx - s / 2, topY + (s + topCurveHeight) / 2,
+    cx, topY + (s + topCurveHeight) / 2,
+    cx, topY + s
+  );
+  ctx.bezierCurveTo(
+    cx, topY + (s + topCurveHeight) / 2,
+    cx + s / 2, topY + (s + topCurveHeight) / 2,
+    cx + s / 2, topY + topCurveHeight
+  );
+  ctx.bezierCurveTo(cx + s / 2, topY, cx, topY, cx, topY + topCurveHeight);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // One full cat block: body + ears + mark + eyes + nose/whiskers, all
 // keyed off `type` alone — no piece/rotation context needed, which is
 // what lets locked board cells keep their face after landing. `x`/`y`
 // are grid coordinates and may be fractional — used by main.js's
 // M4 paw-drag animation to draw a block mid-slide between columns.
-export function drawCatBlock(ctx, x, y, type, size) {
+// `affectionate` (M6) adds a small heart above the head once that
+// type has built up enough affection — see affection.js.
+export function drawCatBlock(ctx, x, y, type, size, affectionate = false) {
   const px = x * size;
   const py = y * size;
   const color = COLORS[type];
@@ -208,27 +238,31 @@ export function drawCatBlock(ctx, x, y, type, size) {
   drawMark(ctx, px, py, size, color, style.mark);
   drawEyes(ctx, px, py, size, style.eye);
   drawNoseAndWhiskers(ctx, px, py, size);
+  if (affectionate) drawHeart(ctx, px + size * 0.5, py - size * 0.26, size);
 }
 
 // `skip` (optional {x, y}) omits one board cell from normal
 // rendering — used while the M4 paw-drag animation is drawing that
-// same cell itself, mid-slide, on top.
-export function drawBoard(ctx, board, skip = null) {
+// same cell itself, mid-slide, on top. `affectionateTypes` (optional
+// Set of type strings, M6) marks which types currently get the heart.
+export function drawBoard(ctx, board, skip = null, affectionateTypes = null) {
   ctx.fillStyle = '#1e1826';
   ctx.fillRect(0, 0, board[0].length * CONFIG.CELL_SIZE, board.length * CONFIG.CELL_SIZE);
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
       if (!cell) return;
       if (skip && skip.x === x && skip.y === y) return;
-      drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE);
+      const affectionate = affectionateTypes?.has(cell.type) ?? false;
+      drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE, affectionate);
     });
   });
 }
 
-export function drawPiece(ctx, piece) {
+export function drawPiece(ctx, piece, affectionateTypes = null) {
   if (!piece) return;
+  const affectionate = affectionateTypes?.has(piece.type) ?? false;
   getCells(piece).forEach(({ x, y }) => {
-    if (y >= 0) drawCatBlock(ctx, x, y, piece.type, CONFIG.CELL_SIZE);
+    if (y >= 0) drawCatBlock(ctx, x, y, piece.type, CONFIG.CELL_SIZE, affectionate);
   });
 }
 
@@ -258,11 +292,12 @@ export function drawGhost(ctx, piece, ghostY, size) {
 }
 
 // Draws the next piece centered in its own small preview canvas.
-export function drawNext(ctx, piece) {
+export function drawNext(ctx, piece, affectionateTypes = null) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   if (!piece) return;
 
   const size = 20;
+  const affectionate = affectionateTypes?.has(piece.type) ?? false;
   const localCells = getCells({ ...piece, x: 0, y: 0, rotation: 0 });
   const minX = Math.min(...localCells.map((c) => c.x));
   const maxX = Math.max(...localCells.map((c) => c.x));
@@ -275,7 +310,7 @@ export function drawNext(ctx, piece) {
 
   ctx.save();
   ctx.translate(offsetX, offsetY);
-  localCells.forEach(({ x, y }) => drawCatBlock(ctx, x, y, piece.type, size));
+  localCells.forEach(({ x, y }) => drawCatBlock(ctx, x, y, piece.type, size, affectionate));
   ctx.restore();
 }
 
