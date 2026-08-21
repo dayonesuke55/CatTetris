@@ -280,7 +280,7 @@ const PAW_PAD_COLOR = '#f4b6c2';
 // the caller owns all the column/margin math. `fromLeft` picks which
 // canvas edge the arm trails off toward. `alpha` fades it on retreat.
 export function drawPaw(ctx, px, py, fromLeft, alpha = 1) {
-  const size = 78; // reference scale for the pad/toes/arm below
+  const size = 117; // reference scale for the pad/toes/arm below (1.5x the original 78)
 
   ctx.save();
   ctx.globalAlpha = Math.max(0, alpha);
