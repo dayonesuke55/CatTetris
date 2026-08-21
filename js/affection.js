@@ -60,6 +60,19 @@ export function recordLineClear(affection, board, rowIndices) {
   return affection;
 }
 
-export function isAffectionate(affection, type) {
-  return (affection[type] ?? 0) >= CONFIG.affection.threshold;
+// How many full tiers this type has completed (0, 1, 2, ...) — an
+// uncapped count, not clamped to any max, since the gauge's tier-color
+// palette (renderer.js) simply repeats its last color once the level
+// runs past the palette's length.
+export function getLevel(affection, type) {
+  return Math.floor((affection[type] ?? 0) / CONFIG.affection.perLevel);
+}
+
+// How full the *current* tier's gauge is (0-1) — the count within this
+// tier divided by perLevel. Lands exactly on 0 the instant a tier
+// completes (see main.js, which checks getLevel() before/after a line
+// clear to detect that same moment and trigger the little celebration
+// bounce).
+export function getLevelProgress(affection, type) {
+  return ((affection[type] ?? 0) % CONFIG.affection.perLevel) / CONFIG.affection.perLevel;
 }

@@ -46,10 +46,14 @@ export const CAT_STYLES = {
 
 // M6: the real-world breed each type's look is riffing on (see
 // CAT_STYLES comments above), plus a one-line personality and cat-fact
-// trivia. Shown in main.js's "breed card" celebration the moment a
-// type's affection first reaches CONFIG.affection.threshold — meant
-// as a little reward for actual cat lovers, and doubles as the flavor
-// text the planned cat-breed collection milestone (M7) can reuse.
+// trivia. Not wired into any UI yet — an earlier version popped this up
+// in a full-screen "breed card" the moment a type first leveled up, but
+// playtesting found that blocked play and was hard to read mid-game, so
+// it was replaced by the lighter in-panel bounce (see renderer.js's
+// drawAffectionPanel). Kept here as reserved flavor text for the
+// planned cat-breed collection milestone (M7), which can surface it
+// without interrupting active play (e.g. a dedicated screen or a hover
+// tooltip).
 export const BREED_PROFILES = {
   I: {
     name: 'シャム',

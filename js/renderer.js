@@ -13,6 +13,7 @@
 
 import { CONFIG } from './config.js';
 import { COLORS, CAT_STYLES, getCells, PIECE_TYPES } from './piece.js';
+import { getLevel, getLevelProgress } from './affection.js';
 
 const EYE_COLOR = '#2b2233';
 const NOSE_COLOR = '#f4b6c2';
@@ -346,30 +347,72 @@ function drawHeartGauge(ctx, cx, topY, s, fraction, color) {
   ctx.stroke();
 }
 
+// M6: tier colors the gauge cycles through as a breed levels up —
+// tier 0 (still working toward the first level) uses the breed's own
+// fur color (COLORS[type], handled as a special case below) so a
+// brand-new bond still looks tied to that specific cat; every tier
+// after that switches to this shared, progressively warmer palette
+// instead, so *any* breed's gauge reads as "more deeply bonded" once
+// it's glowing gold or rose rather than its everyday fur tint. Levels
+// past the last entry just keep reusing it — there's no visual cap,
+// only a practical one.
+const TIER_COLORS = ['#ffd76a', '#ff9f6b', '#ff6b81'];
+
+function tierColorFor(type, level) {
+  if (level <= 0) return COLORS[type];
+  return TIER_COLORS[Math.min(level - 1, TIER_COLORS.length - 1)];
+}
+
+// M6: a little "bounce" applied to one row's face + gauge right after
+// it levels up — main.js tracks how long ago (ms) each type's bounce
+// started and passes that in as `celebrating[type]`, and also uses
+// this same constant to know when to stop bothering (exported so both
+// places agree on one duration). Eases up (scale > 1) and back down
+// over CELEBRATION_MS; returns 1 (no-op scale) once expired or if that
+// type isn't celebrating at all.
+export const CELEBRATION_MS = 900;
+function celebrationScale(celebrating, type) {
+  const elapsed = celebrating?.[type];
+  if (elapsed === undefined || elapsed >= CELEBRATION_MS) return 1;
+  const t = elapsed / CELEBRATION_MS;
+  return 1 + 0.35 * Math.sin(t * Math.PI); // rises then falls back to 1
+}
+
 // M6: the per-breed affection roster shown in the side panel — one row
-// per cat type (a small face icon + its heart gauge), so progress
-// toward "affectionate" is visible at a glance without touching the
-// board's own rendering.
-export function drawAffectionPanel(ctx, affection) {
+// per cat type (a small face icon + its heart gauge), so progress is
+// visible at a glance without touching the board's own rendering.
+// `celebrating` (optional, see celebrationScale above) briefly bounces
+// a row that just leveled up instead of any board/piece indicator —
+// an earlier version drew a heart directly on stacked blocks, which
+// made the board itself harder to read while playing.
+export function drawAffectionPanel(ctx, affection, celebrating = null) {
   const { width, height } = ctx.canvas;
   ctx.clearRect(0, 0, width, height);
 
   const faceSize = 26;
   const heartSize = 24;
   const rowHeight = height / PIECE_TYPES.length;
-  const threshold = CONFIG.affection.threshold;
 
   PIECE_TYPES.forEach((type, i) => {
     const centerY = i * rowHeight + rowHeight / 2;
+    const scale = celebrationScale(celebrating, type);
+    const level = getLevel(affection, type);
+    const fraction = getLevelProgress(affection, type);
+    const color = tierColorFor(type, level);
+    const heartCx = 6 + faceSize + 10 + heartSize / 2;
 
     ctx.save();
-    ctx.translate(6, centerY - faceSize / 2);
+    ctx.translate(6 + faceSize / 2, centerY);
+    ctx.scale(scale, scale);
+    ctx.translate(-faceSize / 2, -faceSize / 2);
     drawCatBlock(ctx, 0, 0, type, faceSize);
     ctx.restore();
 
-    const fraction = Math.min(1, (affection[type] ?? 0) / threshold);
-    const heartCx = 6 + faceSize + 10 + heartSize / 2;
-    drawHeartGauge(ctx, heartCx, centerY - heartSize / 2, heartSize, fraction, COLORS[type]);
+    ctx.save();
+    ctx.translate(heartCx, centerY);
+    ctx.scale(scale, scale);
+    drawHeartGauge(ctx, 0, -heartSize / 2, heartSize, fraction, color);
+    ctx.restore();
   });
 }
 

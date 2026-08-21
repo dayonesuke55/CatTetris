@@ -28,13 +28,17 @@ export const CONFIG = {
 
   // M6: cat affection. Each of the 7 cat types (piece types) builds
   // affection as lines containing it get cleared (see affection.js).
-  // This threshold is the denominator for that type's heart-gauge fill
-  // in the side panel (renderer.js's drawAffectionPanel) — a full
-  // heart means the count has reached it. Affection persists across
-  // games via localStorage (like the high score), unlike score/board
-  // state, since it's meant to be a slow per-breed bond rather than a
-  // per-run stat.
+  // perLevel is a *repeating* interval, not a one-time threshold —
+  // every perLevel clears, that type's heart gauge (side panel,
+  // renderer.js's drawAffectionPanel) fills, empties, and starts
+  // refilling in the next tier color, so the gauge color itself shows
+  // how bonded a breed is rather than just a single milestone. This
+  // replaced a v1 that used a one-time threshold=5 — playtesting found
+  // that too low (it maxed out almost immediately, with no further
+  // payoff, and multiple types often crossed it in the very same
+  // clear). Affection persists across games via localStorage (like the
+  // high score), unlike score/board state.
   affection: {
-    threshold: 5,
+    perLevel: 10,
   },
 };

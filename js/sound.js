@@ -46,9 +46,10 @@ export function playMeow(intensity = 1) {
   osc.stop(now + duration + 0.02);
 }
 
-// M6: a warm little purr for the "breed card" celebration when a cat
-// type's affection first reaches its threshold — a happy payoff, so
-// deliberately the opposite of playPawTap's understated mischief-boop.
+// M6: a warm little purr each time a cat type levels up (every
+// CONFIG.affection.perLevel line clears involving it) — a happy
+// payoff, so deliberately the opposite of playPawTap's understated
+// mischief-boop.
 // Purring is naturally a slow amplitude wobble on a low tone, so this
 // is classic AM synthesis: a low carrier tone whose volume is wobbled
 // by a second, much-slower oscillator (~26Hz is in real cats' typical
