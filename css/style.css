@@ -181,6 +181,7 @@ h1 {
 }
 
 #collection-panel {
+  position: relative; /* anchors #collection-close-btn, shared by both views below */
   background: var(--panel-bg);
   border-radius: 12px;
   padding: 16px 20px;
@@ -190,15 +191,16 @@ h1 {
 }
 
 #collection-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   font-size: 1.1rem;
   font-weight: bold;
   margin-bottom: 12px;
+  padding-right: 24px; /* keeps the title clear of the corner close button */
 }
 
 #collection-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 14px;
   font: inherit;
   font-size: 1.2rem;
   line-height: 1;
@@ -226,6 +228,11 @@ h1 {
   background: var(--board-bg);
   border-radius: 8px;
   text-align: center;
+  cursor: pointer;
+}
+
+.collection-card:hover {
+  outline: 1px solid var(--accent);
 }
 
 .collection-card-face {
@@ -265,4 +272,92 @@ h1 {
 
 .collection-card.locked .collection-card-trivia {
   opacity: 0.55;
+}
+
+/* M7: a single breed's detail page — replaces the grid in-place
+   (#collection-grid-view / #collection-detail-view toggle via
+   .hidden) rather than a real page navigation, since this is a
+   single-page app with no router. */
+#collection-back-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 2px 0 12px;
+}
+
+#collection-detail-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+#collection-detail-face {
+  background: var(--board-bg);
+  border-radius: 50%;
+  margin-bottom: 8px;
+}
+
+#collection-detail-name {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+#collection-detail-personality {
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+#collection-detail-milestones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* One row per MILESTONE_COUNTS entry (see main.js's renderDetail),
+   built with document.createElement rather than hardcoded HTML — 21
+   rows x 7 breeds would be far too much markup to write out by hand
+   like the fixed 7 breed cards above. */
+.milestone-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 8px;
+  background: var(--board-bg);
+  border-radius: 6px;
+}
+
+.milestone-count {
+  flex: 0 0 auto;
+  font-weight: bold;
+  font-size: 0.75rem;
+  color: var(--accent);
+  min-width: 3.2em;
+}
+
+.milestone-fact {
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.milestone-row.locked .milestone-count {
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.milestone-row.locked .milestone-fact {
+  opacity: 0.5;
+}
+
+.milestone-row.special {
+  border: 1px solid var(--accent);
+}
+
+.milestone-row.special .milestone-count {
+  color: #ffd76a;
 }

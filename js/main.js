@@ -6,7 +6,7 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES } from './piece.js';
+import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES, MILESTONE_COUNTS, SPECIAL_HIGH_SCORE } from './piece.js';
 import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel, drawBigFace } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap, playBreedCry } from './sound.js';
@@ -33,6 +33,7 @@ const restartBtn = document.getElementById('restart-btn');
 const collectionBtn = document.getElementById('collection-btn');
 const collectionOverlay = document.getElementById('collection-overlay');
 const collectionCloseBtn = document.getElementById('collection-close-btn');
+const collectionGridView = document.getElementById('collection-grid-view');
 const collectionCards = Object.fromEntries(
   PIECE_TYPES.map((type) => [
     type,
@@ -45,6 +46,16 @@ const collectionCards = Object.fromEntries(
     },
   ])
 );
+
+// M7: the detail page for one breed, opened by clicking its card —
+// full milestone list built dynamically (see renderDetail below), not
+// hardcoded, since it's 21 rows per breed rather than a fixed handful.
+const collectionDetailView = document.getElementById('collection-detail-view');
+const collectionBackBtn = document.getElementById('collection-back-btn');
+const collectionDetailFaceCtx = document.getElementById('collection-detail-face').getContext('2d');
+const collectionDetailName = document.getElementById('collection-detail-name');
+const collectionDetailPersonality = document.getElementById('collection-detail-personality');
+const collectionDetailMilestones = document.getElementById('collection-detail-milestones');
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
 // paw can visibly reach in from beyond the play area instead of
@@ -154,8 +165,7 @@ function resetState() {
   state.pawAnim = null;
   state.levelUpQueue = [];
   state.levelUp = null;
-  state.collectionOpen = false;
-  collectionOverlay.classList.add('hidden');
+  closeCollection();
 }
 
 function tryMove(dx, dy) {
@@ -286,23 +296,100 @@ function renderCollection() {
   });
 }
 
+// M7: one row of the detail page's milestone list — either the real
+// fact (unlocked) or a hint at what it takes to get there (locked).
+// `countLabel` is display text ("50回" or "★特別"); `unlocked` and
+// `fact`/`hint` are pre-resolved by the caller so this stays a plain
+// DOM builder with no knowledge of *why* something is locked.
+function buildMilestoneRow(countLabel, unlocked, fact, hint, extraClass = '') {
+  const row = document.createElement('div');
+  row.className = `milestone-row${unlocked ? '' : ' locked'}${extraClass ? ` ${extraClass}` : ''}`;
+
+  const label = document.createElement('div');
+  label.className = 'milestone-count';
+  label.textContent = countLabel;
+
+  const text = document.createElement('div');
+  text.className = 'milestone-fact';
+  text.textContent = unlocked ? fact : hint;
+
+  row.appendChild(label);
+  row.appendChild(text);
+  return row;
+}
+
+// M7: fills in one breed's detail page — the big face/name/personality
+// header (same lock rule as the grid card) plus the full milestone
+// list, each row unlocked against the *same* raw affection[type] count
+// M6's gauge already tracks (see piece.js's MILESTONE_COUNTS), plus
+// one special row gated on state.highScore instead. Called once per
+// open, same reasoning as renderCollection — nothing here changes
+// while the view (and gameplay behind it) is paused.
+function renderDetail(type) {
+  const profile = BREED_PROFILES[type];
+  const count = state.affection[type] ?? 0;
+  const met = isCollected(state.affection, type);
+
+  collectionDetailFaceCtx.clearRect(0, 0, collectionDetailFaceCtx.canvas.width, collectionDetailFaceCtx.canvas.height);
+  drawCatBlock(collectionDetailFaceCtx, 0, 0, type, collectionDetailFaceCtx.canvas.width);
+  collectionDetailName.textContent = met ? profile.name : '？？？';
+  collectionDetailPersonality.textContent = met ? profile.personality : '';
+
+  collectionDetailMilestones.innerHTML = '';
+  MILESTONE_COUNTS.forEach((threshold, i) => {
+    const unlocked = count >= threshold;
+    const hint = `ラインを${threshold}回消すと解放`;
+    collectionDetailMilestones.appendChild(
+      buildMilestoneRow(`${threshold}回`, unlocked, profile.milestoneFacts[i], hint)
+    );
+  });
+
+  const specialUnlocked = state.highScore >= SPECIAL_HIGH_SCORE;
+  collectionDetailMilestones.appendChild(
+    buildMilestoneRow(
+      '★特別',
+      specialUnlocked,
+      profile.specialFact,
+      `ハイスコア${SPECIAL_HIGH_SCORE}以上で解放`,
+      'special'
+    )
+  );
+}
+
+function showCollectionGrid() {
+  collectionDetailView.classList.add('hidden');
+  collectionGridView.classList.remove('hidden');
+}
+
+function showCollectionDetail(type) {
+  renderDetail(type);
+  collectionGridView.classList.add('hidden');
+  collectionDetailView.classList.remove('hidden');
+}
+
+PIECE_TYPES.forEach((type) => {
+  collectionCards[type].card.addEventListener('click', () => showCollectionDetail(type));
+});
+
+collectionBackBtn.addEventListener('click', showCollectionGrid);
+
+function closeCollection() {
+  collectionOverlay.classList.add('hidden');
+  state.collectionOpen = false;
+  showCollectionGrid(); // reset for next time it's opened
+}
+
 collectionBtn.addEventListener('click', () => {
   renderCollection();
   collectionOverlay.classList.remove('hidden');
   state.collectionOpen = true;
 });
 
-collectionCloseBtn.addEventListener('click', () => {
-  collectionOverlay.classList.add('hidden');
-  state.collectionOpen = false;
-});
+collectionCloseBtn.addEventListener('click', closeCollection);
 
 // Clicking the dimmed backdrop (not the panel itself) also closes it.
 collectionOverlay.addEventListener('click', (e) => {
-  if (e.target === collectionOverlay) {
-    collectionOverlay.classList.add('hidden');
-    state.collectionOpen = false;
-  }
+  if (e.target === collectionOverlay) closeCollection();
 });
 
 bindInput({
