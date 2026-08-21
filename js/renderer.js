@@ -363,29 +363,14 @@ function tierColorFor(type, level) {
   return TIER_COLORS[Math.min(level - 1, TIER_COLORS.length - 1)];
 }
 
-// M6: a little "bounce" applied to one row's face + gauge right after
-// it levels up — main.js tracks how long ago (ms) each type's bounce
-// started and passes that in as `celebrating[type]`, and also uses
-// this same constant to know when to stop bothering (exported so both
-// places agree on one duration). Eases up (scale > 1) and back down
-// over CELEBRATION_MS; returns 1 (no-op scale) once expired or if that
-// type isn't celebrating at all.
-export const CELEBRATION_MS = 900;
-function celebrationScale(celebrating, type) {
-  const elapsed = celebrating?.[type];
-  if (elapsed === undefined || elapsed >= CELEBRATION_MS) return 1;
-  const t = elapsed / CELEBRATION_MS;
-  return 1 + 0.35 * Math.sin(t * Math.PI); // rises then falls back to 1
-}
-
 // M6: the per-breed affection roster shown in the side panel — one row
 // per cat type (a small face icon + its heart gauge), so progress is
-// visible at a glance without touching the board's own rendering.
-// `celebrating` (optional, see celebrationScale above) briefly bounces
-// a row that just leveled up instead of any board/piece indicator —
-// an earlier version drew a heart directly on stacked blocks, which
-// made the board itself harder to read while playing.
-export function drawAffectionPanel(ctx, affection, celebrating = null) {
+// visible at a glance without touching the board's own rendering. A
+// level-up used to bounce the row itself, but that read as too subtle
+// to notice — main.js now shows a big face (see drawBigFace) in the
+// panel's spare space below instead, so this function stays a plain,
+// un-animated readout.
+export function drawAffectionPanel(ctx, affection) {
   const { width, height } = ctx.canvas;
   ctx.clearRect(0, 0, width, height);
 
@@ -395,25 +380,28 @@ export function drawAffectionPanel(ctx, affection, celebrating = null) {
 
   PIECE_TYPES.forEach((type, i) => {
     const centerY = i * rowHeight + rowHeight / 2;
-    const scale = celebrationScale(celebrating, type);
     const level = getLevel(affection, type);
     const fraction = getLevelProgress(affection, type);
     const color = tierColorFor(type, level);
     const heartCx = 6 + faceSize + 10 + heartSize / 2;
 
     ctx.save();
-    ctx.translate(6 + faceSize / 2, centerY);
-    ctx.scale(scale, scale);
-    ctx.translate(-faceSize / 2, -faceSize / 2);
+    ctx.translate(6, centerY - faceSize / 2);
     drawCatBlock(ctx, 0, 0, type, faceSize);
     ctx.restore();
 
-    ctx.save();
-    ctx.translate(heartCx, centerY);
-    ctx.scale(scale, scale);
-    drawHeartGauge(ctx, 0, -heartSize / 2, heartSize, fraction, color);
-    ctx.restore();
+    drawHeartGauge(ctx, heartCx, centerY - heartSize / 2, heartSize, fraction, color);
   });
+}
+
+// M6: the "level up!" celebration — that breed's face, big, shown
+// briefly in the blank space below the gauge panel (see main.js for
+// the fade-in/hold/fade-out timeline and the queue that plays these
+// one at a time). Just drawCatBlock scaled up to fill the canvas —
+// no special expression, the size alone is the celebration.
+export function drawBigFace(ctx, type) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  drawCatBlock(ctx, 0, 0, type, ctx.canvas.width);
 }
 
 const PAW_FUR_COLOR = '#d9c2a8';

@@ -7,9 +7,9 @@
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
 import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES } from './piece.js';
-import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel, CELEBRATION_MS } from './renderer.js';
+import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel, drawBigFace } from './renderer.js';
 import { bindInput } from './input.js';
-import { playMeow, playPawTap, playPurr } from './sound.js';
+import { playMeow, playPawTap, playBreedCry } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 import { loadAffection, saveAffection, recordLineClear, getLevel } from './affection.js';
 
@@ -21,6 +21,8 @@ const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
 const affectionCanvas = document.getElementById('affection-canvas');
 const affectionCtx = affectionCanvas.getContext('2d');
+const levelUpFaceCanvas = document.getElementById('level-up-face');
+const levelUpFaceCtx = levelUpFaceCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
@@ -59,14 +61,15 @@ function randomPawInterval() {
   return minIntervalMs + Math.random() * (maxIntervalMs - minIntervalMs);
 }
 
-// lockCurrentPiece (below) runs from both inside the rAF loop
-// (softDropTick) and directly from a keydown handler (hardDrop, via
-// bindInput) — the latter has no rAF `timestamp` in scope. performance.now()
-// is the same clock rAF timestamps are drawn from, so it's safe to mix
-// with loop()'s `timestamp` when computing a celebration's elapsed time.
-function timestampNow() {
-  return performance.now();
-}
+// M6 "level up" celebration timeline: a brief fade-in/hold/fade-out for
+// the big face shown below the gauge panel (see the render loop).
+// Short on purpose — unlike the earlier full-card design this reuses
+// otherwise-blank panel space and never blocks the board, so several
+// of these can happen over a session without it getting old.
+const LEVEL_UP_FADE_IN_MS = 150;
+const LEVEL_UP_HOLD_MS = 900;
+const LEVEL_UP_FADE_OUT_MS = 300;
+const LEVEL_UP_TOTAL_MS = LEVEL_UP_FADE_IN_MS + LEVEL_UP_HOLD_MS + LEVEL_UP_FADE_OUT_MS;
 
 const HIGH_SCORE_KEY = 'cattetris-high-score';
 
@@ -108,10 +111,8 @@ const state = {
   // never touched by resetState() below — like highScore, it's a
   // slow-building meta stat across games, not a per-run one.
   affection: loadAffection(),
-  // M6: { [type]: startedAt } for any row currently mid-"level up"
-  // bounce (see drawAffectionPanel) — several types can celebrate at
-  // once, independently, since each is confined to its own row.
-  celebrations: {},
+  levelUpQueue: [], // types waiting to show their big-face celebration
+  levelUp: null, // { type, startedAt } for the one currently showing
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -128,7 +129,8 @@ function resetState() {
   state.pawTimer = 0;
   state.pawInterval = randomPawInterval();
   state.pawAnim = null;
-  state.celebrations = {};
+  state.levelUpQueue = [];
+  state.levelUp = null;
 }
 
 function tryMove(dx, dy) {
@@ -203,8 +205,7 @@ function lockCurrentPiece() {
 
     PIECE_TYPES.forEach((type) => {
       if (getLevel(state.affection, type) > levelsBefore[type]) {
-        state.celebrations[type] = timestampNow();
-        playPurr();
+        state.levelUpQueue.push(type);
       }
     });
 
@@ -326,25 +327,38 @@ function loop(timestamp) {
     }
   }
 
-  // M6: turn state.celebrations' start times into {type: elapsedMs},
-  // dropping any that have finished — drawAffectionPanel only needs
-  // "how long ago", not the raw timestamps.
-  const celebrating = {};
-  for (const [type, startedAt] of Object.entries(state.celebrations)) {
-    const elapsed = timestamp - startedAt;
-    if (elapsed >= CELEBRATION_MS) {
-      delete state.celebrations[type];
+  // M6: advance the level-up queue — one big-face celebration at a
+  // time (only one display slot exists), regardless of gameOver, same
+  // reasoning as the paw animation above: a celebration already
+  // showing should still finish its fade cleanly.
+  if (!state.levelUp && state.levelUpQueue.length > 0) {
+    const type = state.levelUpQueue.shift();
+    state.levelUp = { type, startedAt: timestamp };
+    drawBigFace(levelUpFaceCtx, type);
+    playBreedCry(type); // played now, in sync with the face actually appearing
+  }
+  let levelUpOpacity = 0;
+  if (state.levelUp) {
+    const elapsed = timestamp - state.levelUp.startedAt;
+    if (elapsed < LEVEL_UP_FADE_IN_MS) {
+      levelUpOpacity = elapsed / LEVEL_UP_FADE_IN_MS;
+    } else if (elapsed < LEVEL_UP_FADE_IN_MS + LEVEL_UP_HOLD_MS) {
+      levelUpOpacity = 1;
+    } else if (elapsed < LEVEL_UP_TOTAL_MS) {
+      levelUpOpacity = 1 - (elapsed - LEVEL_UP_FADE_IN_MS - LEVEL_UP_HOLD_MS) / LEVEL_UP_FADE_OUT_MS;
     } else {
-      celebrating[type] = elapsed;
+      levelUpOpacity = 0;
+      state.levelUp = null;
     }
   }
+  levelUpFaceCanvas.style.opacity = levelUpOpacity;
 
   drawBoard(boardCtx, state.board, pawSkipCell);
   if (!state.gameOver) drawGhost(boardCtx, state.current, getGhostY(state.current), CONFIG.CELL_SIZE);
   drawPiece(boardCtx, state.current);
   if (pawDrawBlock) drawCatBlock(boardCtx, pawDrawBlock.x, pawDrawBlock.y, pawDrawBlock.type, CONFIG.CELL_SIZE);
   drawNext(nextCtx, state.next);
-  drawAffectionPanel(affectionCtx, state.affection, celebrating);
+  drawAffectionPanel(affectionCtx, state.affection);
   scoreEl.textContent = `Score: ${state.score}`;
   highScoreEl.textContent = `Best: ${state.highScore}`;
   restartBtn.classList.toggle('hidden', !state.gameOver);

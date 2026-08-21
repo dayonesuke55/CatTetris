@@ -46,48 +46,68 @@ export function playMeow(intensity = 1) {
   osc.stop(now + duration + 0.02);
 }
 
-// M6: a warm little purr each time a cat type levels up (every
-// CONFIG.affection.perLevel line clears involving it) — a happy
-// payoff, so deliberately the opposite of playPawTap's understated
-// mischief-boop.
-// Purring is naturally a slow amplitude wobble on a low tone, so this
-// is classic AM synthesis: a low carrier tone whose volume is wobbled
-// by a second, much-slower oscillator (~26Hz is in real cats' typical
-// purr-rate range) connected straight into the gain param.
-export function playPurr() {
+// M6: each type's own base pitch for its level-up cry (playBreedCry
+// below) — roughly follows the size/personality CAT_STYLES/
+// BREED_PROFILES already imply (e.g. the big, gentle Maine Coon sits
+// low; the famously vocal Siamese sits high), so all 7 have a
+// distinct-sounding "voice" of their own.
+const BREED_VOICE = {
+  I: 620, // siamese — famously vocal, high
+  O: 430, // british shorthair — mellow, low
+  T: 520, // brown tabby — average, friendly
+  S: 380, // maine coon — big, deep
+  Z: 480, // scottish fold — soft, mid-low
+  J: 560, // burmese — social, a bit high
+  L: 500, // orange tabby — average, a touch bright
+};
+
+// Three reusable pitch-contour "shapes" rather than 21 fully bespoke
+// curves — combined with each breed's own base pitch above, this still
+// gives every breed 3 distinct-sounding cries (7 voices x 3 shapes).
+function applyCryContour(osc, now, baseFreq, variant, duration) {
+  if (variant === 0) {
+    // short chirp: quick rise then a settle back down
+    osc.frequency.setValueAtTime(baseFreq * 0.85, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 1.2, now + duration * 0.3);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.9, now + duration);
+  } else if (variant === 1) {
+    // rising mew: climbs the whole way through
+    osc.frequency.setValueAtTime(baseFreq * 0.7, now);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 1.3, now + duration);
+  } else {
+    // descending mew: starts high, drifts back down
+    osc.frequency.setValueAtTime(baseFreq * 1.25, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.75, now + duration);
+  }
+}
+
+// M6: a level-up cry for `type` — one of 3 variants picked at random,
+// so the same breed doesn't sound identical every time it levels up.
+// The happy payoff for the affection gauge filling (every
+// CONFIG.affection.perLevel line clears involving that breed).
+export function playBreedCry(type) {
   const audioCtx = getContext();
   if (!audioCtx) return;
 
   const now = audioCtx.currentTime;
-  const duration = 1.1;
+  const duration = 0.32;
+  const baseFreq = BREED_VOICE[type] ?? 500;
+  const variant = Math.floor(Math.random() * 3);
 
-  const carrier = audioCtx.createOscillator();
-  carrier.type = 'sine';
-  carrier.frequency.setValueAtTime(110, now);
-  carrier.frequency.linearRampToValueAtTime(150, now + duration); // happy little upward glide
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'triangle';
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
 
-  const lfo = audioCtx.createOscillator();
-  lfo.type = 'sine';
-  lfo.frequency.setValueAtTime(26, now);
+  applyCryContour(osc, now, baseFreq, variant, duration);
 
-  const lfoGain = audioCtx.createGain();
-  lfoGain.gain.value = 0.08; // wobble depth — kept small so it doesn't dip negative
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.3, now + duration * 0.15);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-  const outGain = audioCtx.createGain();
-  outGain.gain.setValueAtTime(0.0001, now);
-  outGain.gain.linearRampToValueAtTime(0.22, now + 0.18);
-  outGain.gain.setValueAtTime(0.22, now + duration - 0.35);
-  outGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-  lfo.connect(lfoGain);
-  lfoGain.connect(outGain.gain); // modulates the gain -> purr-like tremolo
-  carrier.connect(outGain);
-  outGain.connect(audioCtx.destination);
-
-  carrier.start(now);
-  lfo.start(now);
-  carrier.stop(now + duration + 0.05);
-  lfo.stop(now + duration + 0.05);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
 }
 
 // A soft, low "boop" for the M4 cat-paw gimmick nudging a block —

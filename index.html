@@ -25,6 +25,11 @@
         <div id="high-score">Best: 0</div>
         <div id="affection-label">なつき度</div>
         <canvas id="affection-canvas" width="84" height="224"></canvas>
+        <!-- M6: shown big + briefly whenever a cat type levels up (see
+             main.js) — reuses the blank space below the gauge panel
+             rather than adding a new persistent UI element. Hidden
+             (opacity 0) the rest of the time. -->
+        <canvas id="level-up-face" width="100" height="100"></canvas>
         <button id="restart-btn" class="hidden" type="button">Restart</button>
       </div>
     </div>

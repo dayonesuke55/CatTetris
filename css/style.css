@@ -103,6 +103,15 @@ h1 {
   border-radius: 6px;
 }
 
+/* M6: opacity is driven from JS each frame (fade in/hold/fade out —
+   see main.js), same pattern as the M4 paw's alpha. No background of
+   its own so it truly reads as "using the blank space" below the
+   gauge panel rather than a permanent boxed-in UI element. */
+#level-up-face {
+  opacity: 0;
+  pointer-events: none;
+}
+
 #next-piece-label {
   font-size: 0.85rem;
   opacity: 0.8;
