@@ -12,7 +12,7 @@
 // it works identically for locked, falling, and preview cells.
 
 import { CONFIG } from './config.js';
-import { COLORS, CAT_STYLES, getCells } from './piece.js';
+import { COLORS, CAT_STYLES, getCells, PIECE_TYPES } from './piece.js';
 
 const EYE_COLOR = '#2b2233';
 const NOSE_COLOR = '#f4b6c2';
@@ -192,42 +192,12 @@ function drawNoseAndWhiskers(ctx, px, py, size) {
   ctx.stroke();
 }
 
-const HEART_COLOR = '#ff6b81';
-
-// M6: a small heart above the head, drawn for a type once it's
-// "affectionate" (see affection.js). Standard canvas heart-path trick
-// (two rounded lobes + a bezier point) rather than a shape library —
-// `cx`/`topY` is the point centered between the ears, just above them.
-function drawHeart(ctx, cx, topY, size) {
-  const s = size * 0.22;
-  const topCurveHeight = s * 0.3;
-  ctx.fillStyle = HEART_COLOR;
-  ctx.beginPath();
-  ctx.moveTo(cx, topY + topCurveHeight);
-  ctx.bezierCurveTo(cx, topY, cx - s / 2, topY, cx - s / 2, topY + topCurveHeight);
-  ctx.bezierCurveTo(
-    cx - s / 2, topY + (s + topCurveHeight) / 2,
-    cx, topY + (s + topCurveHeight) / 2,
-    cx, topY + s
-  );
-  ctx.bezierCurveTo(
-    cx, topY + (s + topCurveHeight) / 2,
-    cx + s / 2, topY + (s + topCurveHeight) / 2,
-    cx + s / 2, topY + topCurveHeight
-  );
-  ctx.bezierCurveTo(cx + s / 2, topY, cx, topY, cx, topY + topCurveHeight);
-  ctx.closePath();
-  ctx.fill();
-}
-
 // One full cat block: body + ears + mark + eyes + nose/whiskers, all
 // keyed off `type` alone — no piece/rotation context needed, which is
 // what lets locked board cells keep their face after landing. `x`/`y`
 // are grid coordinates and may be fractional — used by main.js's
 // M4 paw-drag animation to draw a block mid-slide between columns.
-// `affectionate` (M6) adds a small heart above the head once that
-// type has built up enough affection — see affection.js.
-export function drawCatBlock(ctx, x, y, type, size, affectionate = false) {
+export function drawCatBlock(ctx, x, y, type, size) {
   const px = x * size;
   const py = y * size;
   const color = COLORS[type];
@@ -238,31 +208,27 @@ export function drawCatBlock(ctx, x, y, type, size, affectionate = false) {
   drawMark(ctx, px, py, size, color, style.mark);
   drawEyes(ctx, px, py, size, style.eye);
   drawNoseAndWhiskers(ctx, px, py, size);
-  if (affectionate) drawHeart(ctx, px + size * 0.5, py - size * 0.26, size);
 }
 
 // `skip` (optional {x, y}) omits one board cell from normal
 // rendering — used while the M4 paw-drag animation is drawing that
-// same cell itself, mid-slide, on top. `affectionateTypes` (optional
-// Set of type strings, M6) marks which types currently get the heart.
-export function drawBoard(ctx, board, skip = null, affectionateTypes = null) {
+// same cell itself, mid-slide, on top.
+export function drawBoard(ctx, board, skip = null) {
   ctx.fillStyle = '#1e1826';
   ctx.fillRect(0, 0, board[0].length * CONFIG.CELL_SIZE, board.length * CONFIG.CELL_SIZE);
   board.forEach((row, y) => {
     row.forEach((cell, x) => {
       if (!cell) return;
       if (skip && skip.x === x && skip.y === y) return;
-      const affectionate = affectionateTypes?.has(cell.type) ?? false;
-      drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE, affectionate);
+      drawCatBlock(ctx, x, y, cell.type, CONFIG.CELL_SIZE);
     });
   });
 }
 
-export function drawPiece(ctx, piece, affectionateTypes = null) {
+export function drawPiece(ctx, piece) {
   if (!piece) return;
-  const affectionate = affectionateTypes?.has(piece.type) ?? false;
   getCells(piece).forEach(({ x, y }) => {
-    if (y >= 0) drawCatBlock(ctx, x, y, piece.type, CONFIG.CELL_SIZE, affectionate);
+    if (y >= 0) drawCatBlock(ctx, x, y, piece.type, CONFIG.CELL_SIZE);
   });
 }
 
@@ -292,12 +258,11 @@ export function drawGhost(ctx, piece, ghostY, size) {
 }
 
 // Draws the next piece centered in its own small preview canvas.
-export function drawNext(ctx, piece, affectionateTypes = null) {
+export function drawNext(ctx, piece) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   if (!piece) return;
 
   const size = 20;
-  const affectionate = affectionateTypes?.has(piece.type) ?? false;
   const localCells = getCells({ ...piece, x: 0, y: 0, rotation: 0 });
   const minX = Math.min(...localCells.map((c) => c.x));
   const maxX = Math.max(...localCells.map((c) => c.x));
@@ -310,7 +275,7 @@ export function drawNext(ctx, piece, affectionateTypes = null) {
 
   ctx.save();
   ctx.translate(offsetX, offsetY);
-  localCells.forEach(({ x, y }) => drawCatBlock(ctx, x, y, piece.type, size, affectionate));
+  localCells.forEach(({ x, y }) => drawCatBlock(ctx, x, y, piece.type, size));
   ctx.restore();
 }
 
@@ -326,6 +291,86 @@ export function drawGameOver(ctx, score, highScore) {
   const isNewBest = score >= highScore && score > 0;
   ctx.fillText(isNewBest ? `New Best: ${highScore}!` : `Best: ${highScore}`, width / 2, height / 2 + 10);
   ctx.fillText('Press R to restart', width / 2, height / 2 + 32);
+}
+
+// Builds (but doesn't fill/stroke) a heart-shaped path — standard
+// canvas heart trick (two rounded lobes + a bezier point). `cx`/`topY`
+// is the heart's top-center point; its bounding box spans roughly
+// topY..topY+s vertically. Left as a bare path so callers can fill,
+// stroke, or clip to it as needed (see drawHeartGauge below).
+function heartPath(ctx, cx, topY, s) {
+  const topCurveHeight = s * 0.3;
+  ctx.beginPath();
+  ctx.moveTo(cx, topY + topCurveHeight);
+  ctx.bezierCurveTo(cx, topY, cx - s / 2, topY, cx - s / 2, topY + topCurveHeight);
+  ctx.bezierCurveTo(
+    cx - s / 2, topY + (s + topCurveHeight) / 2,
+    cx, topY + (s + topCurveHeight) / 2,
+    cx, topY + s
+  );
+  ctx.bezierCurveTo(
+    cx, topY + (s + topCurveHeight) / 2,
+    cx + s / 2, topY + (s + topCurveHeight) / 2,
+    cx + s / 2, topY + topCurveHeight
+  );
+  ctx.bezierCurveTo(cx + s / 2, topY, cx, topY, cx, topY + topCurveHeight);
+  ctx.closePath();
+}
+
+// M6: one breed's affection gauge — a heart outline that fills from
+// the bottom up as `fraction` (0-1) rises, in that breed's own fur
+// color, like a little liquid-filled meter. Replaces an earlier design
+// that drew a heart directly on stacked blocks — that made the board
+// itself harder to read at a glance, so progress moved to this
+// dedicated side panel instead (see drawAffectionPanel).
+function drawHeartGauge(ctx, cx, topY, s, fraction, color) {
+  // Faint empty heart first, so the unfilled portion still reads as a
+  // heart rather than blank space.
+  heartPath(ctx, cx, topY, s);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.fill();
+
+  if (fraction > 0) {
+    ctx.save();
+    heartPath(ctx, cx, topY, s);
+    ctx.clip();
+    const fillHeight = s * Math.min(1, fraction);
+    ctx.fillStyle = color;
+    ctx.fillRect(cx - s, topY + s - fillHeight, s * 2, fillHeight + s * 0.05);
+    ctx.restore();
+  }
+
+  heartPath(ctx, cx, topY, s);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = Math.max(1, s * 0.06);
+  ctx.stroke();
+}
+
+// M6: the per-breed affection roster shown in the side panel — one row
+// per cat type (a small face icon + its heart gauge), so progress
+// toward "affectionate" is visible at a glance without touching the
+// board's own rendering.
+export function drawAffectionPanel(ctx, affection) {
+  const { width, height } = ctx.canvas;
+  ctx.clearRect(0, 0, width, height);
+
+  const faceSize = 26;
+  const heartSize = 24;
+  const rowHeight = height / PIECE_TYPES.length;
+  const threshold = CONFIG.affection.threshold;
+
+  PIECE_TYPES.forEach((type, i) => {
+    const centerY = i * rowHeight + rowHeight / 2;
+
+    ctx.save();
+    ctx.translate(6, centerY - faceSize / 2);
+    drawCatBlock(ctx, 0, 0, type, faceSize);
+    ctx.restore();
+
+    const fraction = Math.min(1, (affection[type] ?? 0) / threshold);
+    const heartCx = 6 + faceSize + 10 + heartSize / 2;
+    drawHeartGauge(ctx, heartCx, centerY - heartSize / 2, heartSize, fraction, COLORS[type]);
+  });
 }
 
 const PAW_FUR_COLOR = '#d9c2a8';

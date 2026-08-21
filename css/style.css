@@ -92,10 +92,15 @@ h1 {
   margin-top: -4px;
 }
 
-#affection-count {
-  font-size: 0.8rem;
+#affection-label {
+  font-size: 0.85rem;
   opacity: 0.8;
   margin-top: 4px;
+}
+
+#affection-canvas {
+  background: var(--board-bg);
+  border-radius: 6px;
 }
 
 #next-piece-label {

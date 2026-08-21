@@ -6,12 +6,12 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES } from './piece.js';
-import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock } from './renderer.js';
+import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
+import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
-import { loadAffection, saveAffection, recordLineClear, isAffectionate } from './affection.js';
+import { loadAffection, saveAffection, recordLineClear } from './affection.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -19,9 +19,10 @@ const fxCanvas = document.getElementById('fx-canvas');
 const fxCtx = fxCanvas.getContext('2d');
 const nextCanvas = document.getElementById('next-canvas');
 const nextCtx = nextCanvas.getContext('2d');
+const affectionCanvas = document.getElementById('affection-canvas');
+const affectionCtx = affectionCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
-const affectionEl = document.getElementById('affection-count');
 const restartBtn = document.getElementById('restart-btn');
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
@@ -297,28 +298,14 @@ function loop(timestamp) {
     }
   }
 
-  // M6: which types currently get the affection heart. Recomputed each
-  // frame — cheap (7 entries) and keeps this in sync the instant a
-  // line clear pushes a type over the threshold.
-  const affectionateTypes = new Set(PIECE_TYPES.filter((type) => isAffectionate(state.affection, type)));
-
-  drawBoard(boardCtx, state.board, pawSkipCell, affectionateTypes);
+  drawBoard(boardCtx, state.board, pawSkipCell);
   if (!state.gameOver) drawGhost(boardCtx, state.current, getGhostY(state.current), CONFIG.CELL_SIZE);
-  drawPiece(boardCtx, state.current, affectionateTypes);
-  if (pawDrawBlock) {
-    drawCatBlock(
-      boardCtx,
-      pawDrawBlock.x,
-      pawDrawBlock.y,
-      pawDrawBlock.type,
-      CONFIG.CELL_SIZE,
-      affectionateTypes.has(pawDrawBlock.type)
-    );
-  }
-  drawNext(nextCtx, state.next, affectionateTypes);
+  drawPiece(boardCtx, state.current);
+  if (pawDrawBlock) drawCatBlock(boardCtx, pawDrawBlock.x, pawDrawBlock.y, pawDrawBlock.type, CONFIG.CELL_SIZE);
+  drawNext(nextCtx, state.next);
+  drawAffectionPanel(affectionCtx, state.affection);
   scoreEl.textContent = `Score: ${state.score}`;
   highScoreEl.textContent = `Best: ${state.highScore}`;
-  affectionEl.textContent = `Affectionate: ${affectionateTypes.size}/${PIECE_TYPES.length}`;
   restartBtn.classList.toggle('hidden', !state.gameOver);
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 

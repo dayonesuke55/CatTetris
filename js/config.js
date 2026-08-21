@@ -28,11 +28,12 @@ export const CONFIG = {
 
   // M6: cat affection. Each of the 7 cat types (piece types) builds
   // affection as lines containing it get cleared (see affection.js).
-  // Once a type's count reaches this threshold, it's "affectionate" —
-  // renderer.js draws a small heart above its face from then on.
-  // Affection persists across games via localStorage (like the high
-  // score), unlike score/board state, since it's meant to be a slow
-  // per-breed bond rather than a per-run stat.
+  // This threshold is the denominator for that type's heart-gauge fill
+  // in the side panel (renderer.js's drawAffectionPanel) — a full
+  // heart means the count has reached it. Affection persists across
+  // games via localStorage (like the high score), unlike score/board
+  // state, since it's meant to be a slow per-breed bond rather than a
+  // per-run stat.
   affection: {
     threshold: 5,
   },
