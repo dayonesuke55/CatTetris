@@ -7,7 +7,7 @@
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
 import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
-import { drawBoard, drawPiece, drawNext, drawGameOver, drawPaw, drawCatBlock } from './renderer.js';
+import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
@@ -135,6 +135,19 @@ function tryRotate(dir) {
       return;
     }
   }
+}
+
+// Where the current piece would land if hard-dropped right now — same
+// "keep moving down while valid" check hardDrop uses, but read-only.
+// Recomputed every frame (in the render loop below) since it depends
+// on the piece's live x/rotation, both of which can change between
+// drops.
+function getGhostY(piece) {
+  let y = piece.y;
+  while (isValidPosition(state.board, getCells({ ...piece, y: y + 1 }))) {
+    y++;
+  }
+  return y;
 }
 
 function spawnNext() {
@@ -275,6 +288,7 @@ function loop(timestamp) {
   }
 
   drawBoard(boardCtx, state.board, pawSkipCell);
+  if (!state.gameOver) drawGhost(boardCtx, state.current, getGhostY(state.current), CONFIG.CELL_SIZE);
   drawPiece(boardCtx, state.current);
   if (pawDrawBlock) drawCatBlock(boardCtx, pawDrawBlock.x, pawDrawBlock.y, pawDrawBlock.type, CONFIG.CELL_SIZE);
   drawNext(nextCtx, state.next);

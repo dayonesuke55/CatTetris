@@ -34,6 +34,13 @@ h1 {
   font-size: 1.5rem;
 }
 
+#game-area {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+}
+
 #canvas-stack {
   position: relative;
   width: 300px;

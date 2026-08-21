@@ -232,6 +232,31 @@ export function drawPiece(ctx, piece) {
   });
 }
 
+// The hard-drop landing preview: a faint outline of the current piece
+// at the row it would settle on, so a hard drop (space bar) never
+// lands somewhere the player didn't expect. `ghostY` is the piece's
+// would-be `y` if dropped now — main.js works that out by re-running
+// the same "move down until blocked" check hardDrop uses, without
+// mutating anything. Drawn as a stroked outline rather than a second
+// full cat face so it doesn't read as an actual second piece.
+export function drawGhost(ctx, piece, ghostY, size) {
+  if (!piece || ghostY === piece.y) return; // already resting here — nothing to preview
+  const color = COLORS[piece.type];
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, size * 0.06);
+  getCells({ ...piece, y: ghostY }).forEach(({ x, y }) => {
+    if (y < 0) return;
+    const px = x * size;
+    const py = y * size;
+    const pad = size * 0.05;
+    roundRectPath(ctx, px + pad, py + pad, size - pad * 2, size - pad * 2, size * 0.22);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 // Draws the next piece centered in its own small preview canvas.
 export function drawNext(ctx, piece) {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
