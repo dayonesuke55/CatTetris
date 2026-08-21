@@ -59,6 +59,15 @@ export const MILESTONE_COUNTS = [
 // page once true.
 export const SPECIAL_HIGH_SCORE = 10000;
 
+// M7 follow-up: a *separate* schedule from MILESTONE_COUNTS above.
+// Those unlock off the cumulative, cross-game affection[type] count;
+// these unlock off how many of that breed's lines got cleared within
+// one continuous game (see sessionMilestones.js's per-game counter),
+// so reaching them requires a single long, unbroken run rather than
+// adding up over many short sessions. Once earned in any one game the
+// unlock is permanent (persisted), same as the cumulative ones.
+export const SESSION_MILESTONE_COUNTS = [100, 200, 300, 400, 500];
+
 // M6: the real-world breed each type's look is riffing on (see
 // CAT_STYLES comments above), plus a one-line personality and cat-fact
 // trivia — `trivia` is the short teaser shown on the M7 collection
@@ -94,6 +103,13 @@ export const BREED_PROFILES = {
       '現在も世界中の人気猫種ランキングでトップクラスに数えられる。',
     ],
     specialFact: '伝説のシャム猫は王家の宝石の番人だったという言い伝えも——あなたのスコアはまさに王家級。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン——シャムの通る声が絶え間なく響いていそうな集中力。',
+      '200ライン到達。おしゃべりなシャムも、しばし鳴くのを忘れて見入るレベル。',
+      '300ライン。かつて王家に愛されたシャムの誇り高さにも負けない粘り強さ。',
+      '400ライン到達、もはや「鳴き止まぬ絆」——1プレイでここまで積み上げるとは。',
+      '500ライン。伝説のロイヤルキャットもひれ伏す、1プレイ限りの大偉業。',
+    ],
   },
   O: {
     name: 'ブリティッシュショートヘア',
@@ -123,6 +139,13 @@ export const BREED_PROFILES = {
       '今なお世界中のキャットショーで人気の常連となっている品種。',
     ],
     specialFact: 'どっしり構えたその姿はまさに"猫界の貴族"。1万点超えはあなたの貫禄の証。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。マイペースなブリティッシュショートヘアも思わず目を丸くする集中力。',
+      '200ライン到達。どっしり構えるその貫禄すら霞むほどの一気呵成。',
+      '300ライン。テディベアもかくやという、ゆるぎない安定感の証明。',
+      '400ライン到達、置物のようにじっとしていたあの猫も、思わず起き上がりそうな快挙。',
+      '500ライン。1プレイでここまで——猫界の貴族もついに膝を折る偉業。',
+    ],
   },
   T: {
     name: 'キジトラ',
@@ -152,6 +175,13 @@ export const BREED_PROFILES = {
       'ありふれているようで、実は一匹一匹模様が違う個性豊かな柄。',
     ],
     specialFact: '野に生きるキジトラのようにたくましく駆け抜けた証——1万点、お見事。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。野生のヤマネコ譲りの俊敏さがそのまま出たような集中力。',
+      '200ライン到達。ご近所の顔役キジトラも、思わず見惚れる一気の積み上げ。',
+      '300ライン。江戸の浮世絵にも描かれた歴史あるキジトラすら驚く粘り強さ。',
+      '400ライン到達、たくましい生命力そのまま——1プレイでの快進撃。',
+      '500ライン。招き猫もかくやという、まさに幸運を呼び込む大記録。',
+    ],
   },
   S: {
     name: 'メインクーン',
@@ -181,6 +211,13 @@ export const BREED_PROFILES = {
       'その堂々とした姿から「猫界の王者」とも呼ばれる。',
     ],
     specialFact: '穏やかな巨人が持つ底知れぬ力のように——1万点、まさに王者の風格。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。穏やかな巨人も思わず身を乗り出す集中力。',
+      '200ライン到達。世界最長の記録を持ったこともある猫種にふさわしい積み上げ。',
+      '300ライン。3層の被毛で厳しい寒さに耐えるように、粘り強く積み上げた証。',
+      '400ライン到達、猫界の王者と呼ばれるにふさわしい貫禄の一気呵成。',
+      '500ライン。1プレイでここまで——穏やかな巨人もついに雄叫びを上げる大偉業。',
+    ],
   },
   Z: {
     name: 'スコティッシュフォールド',
@@ -210,6 +247,13 @@ export const BREED_PROFILES = {
       '一度見たら忘れられない、唯一無二のシルエットを持つ猫種。',
     ],
     specialFact: '折れ耳の奥に秘めたおっとりパワーが弾ける瞬間——1万点到達、お見事。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。おっとり屋のスコティッシュフォールドも思わずスコ座りで見入る集中力。',
+      '200ライン到達。フクロウのような瞳をまん丸にする一気の積み上げ。',
+      '300ライン。折れ耳の奥に隠れたポテンシャルが爆発した瞬間。',
+      '400ライン到達、順応力抜群のこの猫種すら舌を巻く粘り強さ。',
+      '500ライン。1プレイでここまで——唯一無二のシルエットにふさわしい大記録。',
+    ],
   },
   J: {
     name: 'バーミーズ',
@@ -239,6 +283,13 @@ export const BREED_PROFILES = {
       '一度暮らすと手放せなくなるという愛好家が多い品種。',
     ],
     specialFact: '人懐っこいバーミーズも思わず尻尾を立てる快挙——1万点達成おめでとう。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。社交的なバーミーズも思わず膝から降りて見入る集中力。',
+      '200ライン到達。絹のような毛並みにも負けない滑らかな一気の積み上げ。',
+      '300ライン。ウォン・マウの血を引くバーミーズが誇らしげに尻尾を立てる粘り。',
+      '400ライン到達、甘えん坊も思わず声を上げる快挙。',
+      '500ライン。1プレイでここまで——膝の上の猫もついに立ち上がる大偉業。',
+    ],
   },
   L: {
     name: '茶トラ',
@@ -268,6 +319,13 @@ export const BREED_PROFILES = {
       '愛嬌満点、まさに「みんなに愛される猫」の代名詞的存在。',
     ],
     specialFact: '食いしん坊な茶トラもびっくりの大記録——1万点、お腹いっぱいの快挙です。',
+    sessionMilestoneFacts: [
+      '1プレイで100ライン。食いしん坊の茶トラもおやつを忘れて見入る集中力。',
+      '200ライン到達。まんまるな体もつい忘れるほどの一気の積み上げ。',
+      '300ライン。愛嬌たっぷりの茶トラすら真剣な顔になる粘り強さ。',
+      '400ライン到達、日向ぼっこも後回しにするほどの快進撃。',
+      '500ライン。1プレイでここまで——みんなに愛される茶トラもお腹いっぱいの大偉業。',
+    ],
   },
 };
 

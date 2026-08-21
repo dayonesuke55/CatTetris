@@ -361,3 +361,21 @@ h1 {
 .milestone-row.special .milestone-count {
   color: #ffd76a;
 }
+
+/* M7 follow-up: divider ahead of the "single game" milestone section
+   (see main.js's renderDetail) so it doesn't read as a continuation of
+   the cumulative list right above it. */
+.milestone-section-label {
+  font-size: 0.75rem;
+  font-weight: bold;
+  opacity: 0.7;
+  margin: 4px 2px 0;
+}
+
+.milestone-row.session {
+  border: 1px solid #8fe0a0;
+}
+
+.milestone-row.session .milestone-count {
+  color: #8fe0a0;
+}

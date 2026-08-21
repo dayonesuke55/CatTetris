@@ -6,12 +6,13 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES, MILESTONE_COUNTS, SPECIAL_HIGH_SCORE } from './piece.js';
+import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES, MILESTONE_COUNTS, SPECIAL_HIGH_SCORE, SESSION_MILESTONE_COUNTS } from './piece.js';
 import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel, drawBigFace } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap, playBreedCry } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 import { loadAffection, saveAffection, recordLineClear, getLevel, isCollected } from './affection.js';
+import { loadSessionUnlocks, saveSessionUnlocks, emptySessionCounts, recordSessionLineClear, updateSessionUnlocks } from './sessionMilestones.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -147,6 +148,14 @@ const state = {
   // and timers (see tryMove/tryRotate/hardDrop and the loop below)
   // rather than letting the player fall/paw-swipe blind behind it.
   collectionOpen: false,
+  // M7 follow-up: per-type line-clear count for *this* game only,
+  // reset in resetState() — drives sessionUnlocks below, unlike
+  // affection which is cumulative across every game ever played.
+  sessionCounts: emptySessionCounts(),
+  // Persisted (like affection/highScore): which of each breed's
+  // SESSION_MILESTONE_COUNTS tiers have ever been reached in a single
+  // unbroken game. Once true, stays true forever.
+  sessionUnlocks: loadSessionUnlocks(),
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -165,6 +174,9 @@ function resetState() {
   state.pawAnim = null;
   state.levelUpQueue = [];
   state.levelUp = null;
+  // Session-only tally starts fresh each game — sessionUnlocks itself
+  // (what it's earned so far) is untouched, same as affection/highScore.
+  state.sessionCounts = emptySessionCounts();
   closeCollection();
 }
 
@@ -237,6 +249,14 @@ function lockCurrentPiece() {
     // types were actually in the cleared rows.
     recordLineClear(state.affection, state.board, fullRows);
     saveAffection(state.affection);
+
+    // M7 follow-up: same rows, but tallied into this game's own
+    // per-type count (see sessionMilestones.js) rather than the
+    // cumulative one above — persist only if a new tier was crossed.
+    recordSessionLineClear(state.sessionCounts, state.board, fullRows);
+    if (updateSessionUnlocks(state.sessionCounts, state.sessionUnlocks)) {
+      saveSessionUnlocks(state.sessionUnlocks);
+    }
 
     PIECE_TYPES.forEach((type) => {
       if (getLevel(state.affection, type) > levelsBefore[type]) {
@@ -341,6 +361,23 @@ function renderDetail(type) {
     const hint = `ラインを${threshold}回消すと解放`;
     collectionDetailMilestones.appendChild(
       buildMilestoneRow(`${threshold}回`, unlocked, profile.milestoneFacts[i], hint)
+    );
+  });
+
+  // M7 follow-up: a second, harder schedule — unlocked only if this
+  // many of the breed's lines were cleared within one continuous game
+  // (state.sessionUnlocks, persisted once earned), not summed across
+  // every game ever played like the section above.
+  const sessionHeader = document.createElement('div');
+  sessionHeader.className = 'milestone-section-label';
+  sessionHeader.textContent = '1プレイでの記録';
+  collectionDetailMilestones.appendChild(sessionHeader);
+
+  SESSION_MILESTONE_COUNTS.forEach((threshold, i) => {
+    const unlocked = state.sessionUnlocks[type]?.[i] ?? false;
+    const hint = `1プレイでラインを${threshold}回消すと解放`;
+    collectionDetailMilestones.appendChild(
+      buildMilestoneRow(`${threshold}回`, unlocked, profile.sessionMilestoneFacts[i], hint, 'session')
     );
   });
 
