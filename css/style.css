@@ -137,6 +137,132 @@ h1 {
   filter: brightness(1.08);
 }
 
+#collection-btn {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+#collection-btn:hover {
+  background: rgba(244, 182, 194, 0.15);
+}
+
 .hidden {
   display: none;
+}
+
+/* M7: cat-breed collection. Opened on demand (not auto-popped during
+   play like M6's earlier attempts), so unlike those it's fine for
+   this to be a real modal that pauses the game — see main.js's
+   state.collectionOpen. */
+#collection-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+/* Needed because #collection-overlay's own `display: flex` (an ID
+   rule) otherwise outranks .hidden's `display: none` (a class rule) by
+   specificity, even while .hidden is applied — every other .hidden
+   user in this stylesheet has no display rule of its own, so this
+   conflict didn't show up until this element. */
+#collection-overlay.hidden {
+  display: none;
+}
+
+#collection-panel {
+  background: var(--panel-bg);
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-width: 480px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+#collection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+#collection-close-btn {
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+#collection-close-btn:hover {
+  color: var(--accent);
+}
+
+#collection-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.collection-card {
+  width: 130px;
+  padding: 10px;
+  background: var(--board-bg);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.collection-card-face {
+  background: var(--panel-bg);
+  border-radius: 50%;
+  margin-bottom: 6px;
+}
+
+.collection-card-name {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.collection-card-personality {
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.collection-card-trivia {
+  font-size: 0.65rem;
+  opacity: 0.75;
+  margin-top: 4px;
+}
+
+/* Not yet met (see affection.js's isCollected): face silhouetted via a
+   filter (no separate "locked" art needed) and text swapped to a
+   teaser in main.js's renderCollection, rather than the real profile. */
+.collection-card.locked .collection-card-face {
+  filter: brightness(0) opacity(0.45);
+}
+
+.collection-card.locked .collection-card-name {
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.collection-card.locked .collection-card-trivia {
+  opacity: 0.55;
 }

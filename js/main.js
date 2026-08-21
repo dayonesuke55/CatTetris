@@ -6,12 +6,12 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES } from './piece.js';
+import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES } from './piece.js';
 import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel, drawBigFace } from './renderer.js';
 import { bindInput } from './input.js';
 import { playMeow, playPawTap, playBreedCry } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
-import { loadAffection, saveAffection, recordLineClear, getLevel } from './affection.js';
+import { loadAffection, saveAffection, recordLineClear, getLevel, isCollected } from './affection.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -26,6 +26,25 @@ const levelUpFaceCtx = levelUpFaceCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
+
+// M7: collection view — a DOM element bundle per type rather than 7
+// separate named consts, since every card is rendered identically
+// (see renderCollection below).
+const collectionBtn = document.getElementById('collection-btn');
+const collectionOverlay = document.getElementById('collection-overlay');
+const collectionCloseBtn = document.getElementById('collection-close-btn');
+const collectionCards = Object.fromEntries(
+  PIECE_TYPES.map((type) => [
+    type,
+    {
+      card: document.getElementById(`collection-card-${type}`),
+      faceCtx: document.getElementById(`collection-face-${type}`).getContext('2d'),
+      name: document.getElementById(`collection-name-${type}`),
+      personality: document.getElementById(`collection-personality-${type}`),
+      trivia: document.getElementById(`collection-trivia-${type}`),
+    },
+  ])
+);
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
 // paw can visibly reach in from beyond the play area instead of
@@ -113,6 +132,10 @@ const state = {
   affection: loadAffection(),
   levelUpQueue: [], // types waiting to show their big-face celebration
   levelUp: null, // { type, startedAt } for the one currently showing
+  // M7: true while the collection view is open — pauses gameplay input
+  // and timers (see tryMove/tryRotate/hardDrop and the loop below)
+  // rather than letting the player fall/paw-swipe blind behind it.
+  collectionOpen: false,
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -131,10 +154,12 @@ function resetState() {
   state.pawAnim = null;
   state.levelUpQueue = [];
   state.levelUp = null;
+  state.collectionOpen = false;
+  collectionOverlay.classList.add('hidden');
 }
 
 function tryMove(dx, dy) {
-  if (state.gameOver) return false;
+  if (state.gameOver || state.collectionOpen) return false;
   const moved = { ...state.current, x: state.current.x + dx, y: state.current.y + dy };
   if (isValidPosition(state.board, getCells(moved))) {
     state.current = moved;
@@ -144,7 +169,7 @@ function tryMove(dx, dy) {
 }
 
 function tryRotate(dir) {
-  if (state.gameOver) return;
+  if (state.gameOver || state.collectionOpen) return;
   const { rotation, cells } = getRotatedCells(state.current, dir);
   if (isValidPosition(state.board, cells)) {
     state.current = { ...state.current, rotation };
@@ -218,19 +243,67 @@ function lockCurrentPiece() {
 }
 
 function softDropTick() {
-  if (state.gameOver) return;
+  // Checked directly (not just via tryMove's own guard) — tryMove
+  // returning false while the collection view is open must not be
+  // mistaken for "hit bottom, lock it".
+  if (state.gameOver || state.collectionOpen) return;
   if (!tryMove(0, 1)) {
     lockCurrentPiece();
   }
 }
 
 function hardDrop() {
-  if (state.gameOver) return;
+  if (state.gameOver || state.collectionOpen) return;
   while (tryMove(0, 1)) {
     // keep dropping until it lands
   }
   lockCurrentPiece();
 }
+
+// M7: fills in every card's face/text from the *current* affection —
+// called once when the view opens rather than every frame, since
+// nothing in it can change while gameplay is paused behind it (see
+// state.collectionOpen).
+function renderCollection() {
+  PIECE_TYPES.forEach((type) => {
+    const { card, faceCtx, name, personality, trivia } = collectionCards[type];
+    const profile = BREED_PROFILES[type];
+    const met = isCollected(state.affection, type);
+
+    faceCtx.clearRect(0, 0, faceCtx.canvas.width, faceCtx.canvas.height);
+    drawCatBlock(faceCtx, 0, 0, type, faceCtx.canvas.width);
+
+    card.classList.toggle('locked', !met);
+    if (met) {
+      name.textContent = profile.name;
+      personality.textContent = profile.personality;
+      trivia.textContent = profile.trivia;
+    } else {
+      name.textContent = '？？？';
+      personality.textContent = '';
+      trivia.textContent = `ラインを${CONFIG.affection.perLevel}回消すと出会えます`;
+    }
+  });
+}
+
+collectionBtn.addEventListener('click', () => {
+  renderCollection();
+  collectionOverlay.classList.remove('hidden');
+  state.collectionOpen = true;
+});
+
+collectionCloseBtn.addEventListener('click', () => {
+  collectionOverlay.classList.add('hidden');
+  state.collectionOpen = false;
+});
+
+// Clicking the dimmed backdrop (not the panel itself) also closes it.
+collectionOverlay.addEventListener('click', (e) => {
+  if (e.target === collectionOverlay) {
+    collectionOverlay.classList.add('hidden');
+    state.collectionOpen = false;
+  }
+});
 
 bindInput({
   onMoveLeft: () => tryMove(-1, 0),
@@ -253,7 +326,7 @@ function loop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
-  if (!state.gameOver) {
+  if (!state.gameOver && !state.collectionOpen) {
     state.dropTimer += dt;
     if (state.dropTimer >= state.dropInterval) {
       state.dropTimer = 0;

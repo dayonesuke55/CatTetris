@@ -30,10 +30,70 @@
              rather than adding a new persistent UI element. Hidden
              (opacity 0) the rest of the time. -->
         <canvas id="level-up-face" width="100" height="100"></canvas>
+        <button id="collection-btn" type="button">🐾 図鑑</button>
         <button id="restart-btn" class="hidden" type="button">Restart</button>
       </div>
     </div>
   </div>
+
+  <!-- M7: cat-breed collection. A card per type (see piece.js's
+       BREED_PROFILES), locked until affection.js's isCollected() says
+       that breed has been met — opened on demand via the 図鑑 button
+       rather than popping up during play, so it can safely pause the
+       game and take its time. -->
+  <div id="collection-overlay" class="hidden">
+    <div id="collection-panel">
+      <div id="collection-header">
+        <span>猫種図鑑</span>
+        <button id="collection-close-btn" type="button">×</button>
+      </div>
+      <div id="collection-grid">
+        <div class="collection-card" id="collection-card-I">
+          <canvas class="collection-card-face" id="collection-face-I" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-I"></div>
+          <div class="collection-card-personality" id="collection-personality-I"></div>
+          <div class="collection-card-trivia" id="collection-trivia-I"></div>
+        </div>
+        <div class="collection-card" id="collection-card-O">
+          <canvas class="collection-card-face" id="collection-face-O" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-O"></div>
+          <div class="collection-card-personality" id="collection-personality-O"></div>
+          <div class="collection-card-trivia" id="collection-trivia-O"></div>
+        </div>
+        <div class="collection-card" id="collection-card-T">
+          <canvas class="collection-card-face" id="collection-face-T" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-T"></div>
+          <div class="collection-card-personality" id="collection-personality-T"></div>
+          <div class="collection-card-trivia" id="collection-trivia-T"></div>
+        </div>
+        <div class="collection-card" id="collection-card-S">
+          <canvas class="collection-card-face" id="collection-face-S" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-S"></div>
+          <div class="collection-card-personality" id="collection-personality-S"></div>
+          <div class="collection-card-trivia" id="collection-trivia-S"></div>
+        </div>
+        <div class="collection-card" id="collection-card-Z">
+          <canvas class="collection-card-face" id="collection-face-Z" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-Z"></div>
+          <div class="collection-card-personality" id="collection-personality-Z"></div>
+          <div class="collection-card-trivia" id="collection-trivia-Z"></div>
+        </div>
+        <div class="collection-card" id="collection-card-J">
+          <canvas class="collection-card-face" id="collection-face-J" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-J"></div>
+          <div class="collection-card-personality" id="collection-personality-J"></div>
+          <div class="collection-card-trivia" id="collection-trivia-J"></div>
+        </div>
+        <div class="collection-card" id="collection-card-L">
+          <canvas class="collection-card-face" id="collection-face-L" width="70" height="70"></canvas>
+          <div class="collection-card-name" id="collection-name-L"></div>
+          <div class="collection-card-personality" id="collection-personality-L"></div>
+          <div class="collection-card-trivia" id="collection-trivia-L"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -71,8 +71,16 @@ export function getLevel(affection, type) {
 // How full the *current* tier's gauge is (0-1) — the count within this
 // tier divided by perLevel. Lands exactly on 0 the instant a tier
 // completes (see main.js, which checks getLevel() before/after a line
-// clear to detect that same moment and trigger the little celebration
-// bounce).
+// clear to detect that same moment and trigger the level-up celebration).
 export function getLevelProgress(affection, type) {
   return ((affection[type] ?? 0) % CONFIG.affection.perLevel) / CONFIG.affection.perLevel;
+}
+
+// M7: whether the player has "met" this breed enough to unlock its
+// entry in the collection screen — reaching level 1 (one full gauge
+// cycle) is enough, rather than requiring deep bonding, so the
+// collection fills in steadily as a natural side effect of playing
+// rather than needing separate grinding.
+export function isCollected(affection, type) {
+  return getLevel(affection, type) >= 1;
 }
