@@ -6,12 +6,12 @@
 
 import { CONFIG } from './config.js';
 import { createBoard, isValidPosition, lockPiece, getFullRows, clearRows } from './board.js';
-import { makePieceQueue, getCells, getRotatedCells } from './piece.js';
+import { makePieceQueue, getCells, getRotatedCells, PIECE_TYPES, BREED_PROFILES } from './piece.js';
 import { drawBoard, drawPiece, drawGhost, drawNext, drawGameOver, drawPaw, drawCatBlock, drawAffectionPanel } from './renderer.js';
 import { bindInput } from './input.js';
-import { playMeow, playPawTap } from './sound.js';
+import { playMeow, playPawTap, playPurr } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
-import { loadAffection, saveAffection, recordLineClear } from './affection.js';
+import { loadAffection, saveAffection, recordLineClear, isAffectionate } from './affection.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -24,6 +24,13 @@ const affectionCtx = affectionCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
+
+const breedCardEl = document.getElementById('breed-card');
+const breedCardFaceCanvas = document.getElementById('breed-card-face');
+const breedCardFaceCtx = breedCardFaceCanvas.getContext('2d');
+const breedCardNameEl = document.getElementById('breed-card-name');
+const breedCardPersonalityEl = document.getElementById('breed-card-personality');
+const breedCardTriviaEl = document.getElementById('breed-card-trivia');
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
 // paw can visibly reach in from beyond the play area instead of
@@ -57,6 +64,27 @@ const PAW_TOTAL_MS = PAW_REACH_MS + PAW_DRAG_MS + PAW_SETTLE_MS;
 function randomPawInterval() {
   const { minIntervalMs, maxIntervalMs } = CONFIG.catPaw;
   return minIntervalMs + Math.random() * (maxIntervalMs - minIntervalMs);
+}
+
+// M6 "breed card" celebration timeline: fades in, holds so the
+// name/personality/trivia can actually be read, then fades out. Shown
+// once per type the very first time its affection reaches the
+// threshold (see lockCurrentPiece), queued rather than shown
+// instantly in case two types cross in the very same line clear.
+const BREED_CARD_FADE_IN_MS = 250;
+const BREED_CARD_HOLD_MS = 2600;
+const BREED_CARD_FADE_OUT_MS = 500;
+const BREED_CARD_TOTAL_MS = BREED_CARD_FADE_IN_MS + BREED_CARD_HOLD_MS + BREED_CARD_FADE_OUT_MS;
+
+// Fills in the card's content for `type` — called once when a card
+// starts, not every frame (only its opacity needs updating per-frame).
+function showBreedCard(type) {
+  const profile = BREED_PROFILES[type];
+  breedCardNameEl.textContent = profile.name;
+  breedCardPersonalityEl.textContent = profile.personality;
+  breedCardTriviaEl.textContent = profile.trivia;
+  breedCardFaceCtx.clearRect(0, 0, breedCardFaceCanvas.width, breedCardFaceCanvas.height);
+  drawCatBlock(breedCardFaceCtx, 0, 0, type, breedCardFaceCanvas.width);
 }
 
 const HIGH_SCORE_KEY = 'cattetris-high-score';
@@ -99,6 +127,8 @@ const state = {
   // never touched by resetState() below — like highScore, it's a
   // slow-building meta stat across games, not a per-run one.
   affection: loadAffection(),
+  breedCardQueue: [], // types waiting to show their celebration card
+  breedCard: null, // { type, startedAt } for the one currently showing
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
@@ -115,6 +145,8 @@ function resetState() {
   state.pawTimer = 0;
   state.pawInterval = randomPawInterval();
   state.pawAnim = null;
+  state.breedCardQueue = [];
+  state.breedCard = null;
 }
 
 function tryMove(dx, dy) {
@@ -176,10 +208,24 @@ function lockCurrentPiece() {
 
   const fullRows = getFullRows(state.board);
   if (fullRows.length > 0) {
+    // Snapshot before recordLineClear so we can tell which types (if
+    // any) just crossed the affection threshold with this clear —
+    // that's the moment to queue their one-time celebration card.
+    const wasAffectionate = Object.fromEntries(
+      PIECE_TYPES.map((type) => [type, isAffectionate(state.affection, type)])
+    );
+
     // Must run before clearRows() mutates the board — it reads which
     // types were actually in the cleared rows.
     recordLineClear(state.affection, state.board, fullRows);
     saveAffection(state.affection);
+
+    PIECE_TYPES.forEach((type) => {
+      if (!wasAffectionate[type] && isAffectionate(state.affection, type)) {
+        state.breedCardQueue.push(type);
+      }
+    });
+
     clearRows(state.board, fullRows);
     state.score += CONFIG.LINE_SCORES[fullRows.length] ?? 0;
     playMeow(fullRows.length);
@@ -296,6 +342,31 @@ function loop(timestamp) {
     } else {
       state.pawAnim = null;
     }
+  }
+
+  // M6: advance the breed-card celebration queue. One card at a time,
+  // regardless of gameOver, same reasoning as the paw animation above
+  // — a card already showing should still finish its fade cleanly.
+  if (!state.breedCard && state.breedCardQueue.length > 0) {
+    const type = state.breedCardQueue.shift();
+    state.breedCard = { type, startedAt: timestamp };
+    showBreedCard(type);
+    playPurr();
+  }
+  if (state.breedCard) {
+    const elapsed = timestamp - state.breedCard.startedAt;
+    let opacity;
+    if (elapsed < BREED_CARD_FADE_IN_MS) {
+      opacity = elapsed / BREED_CARD_FADE_IN_MS;
+    } else if (elapsed < BREED_CARD_FADE_IN_MS + BREED_CARD_HOLD_MS) {
+      opacity = 1;
+    } else if (elapsed < BREED_CARD_TOTAL_MS) {
+      opacity = 1 - (elapsed - BREED_CARD_FADE_IN_MS - BREED_CARD_HOLD_MS) / BREED_CARD_FADE_OUT_MS;
+    } else {
+      opacity = 0;
+      state.breedCard = null;
+    }
+    breedCardEl.style.opacity = opacity;
   }
 
   drawBoard(boardCtx, state.board, pawSkipCell);

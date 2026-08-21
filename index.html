@@ -27,6 +27,18 @@
         <canvas id="affection-canvas" width="84" height="224"></canvas>
         <button id="restart-btn" class="hidden" type="button">Restart</button>
       </div>
+      <!-- M6: celebration shown once when a cat type's affection first
+           reaches the threshold (see main.js). Sits on top of both
+           canvas-stack and ui-panel — rare/brief enough that covering
+           the board for a moment is fine for a reward, unlike a
+           constant on-block indicator. -->
+      <div id="breed-card">
+        <div id="breed-card-heading">なかよくなった！</div>
+        <canvas id="breed-card-face" width="90" height="90"></canvas>
+        <div id="breed-card-name"></div>
+        <div id="breed-card-personality"></div>
+        <div id="breed-card-trivia"></div>
+      </div>
     </div>
   </div>
   <script type="module" src="js/main.js"></script>

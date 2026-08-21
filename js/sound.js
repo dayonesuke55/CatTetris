@@ -46,6 +46,49 @@ export function playMeow(intensity = 1) {
   osc.stop(now + duration + 0.02);
 }
 
+// M6: a warm little purr for the "breed card" celebration when a cat
+// type's affection first reaches its threshold — a happy payoff, so
+// deliberately the opposite of playPawTap's understated mischief-boop.
+// Purring is naturally a slow amplitude wobble on a low tone, so this
+// is classic AM synthesis: a low carrier tone whose volume is wobbled
+// by a second, much-slower oscillator (~26Hz is in real cats' typical
+// purr-rate range) connected straight into the gain param.
+export function playPurr() {
+  const audioCtx = getContext();
+  if (!audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  const duration = 1.1;
+
+  const carrier = audioCtx.createOscillator();
+  carrier.type = 'sine';
+  carrier.frequency.setValueAtTime(110, now);
+  carrier.frequency.linearRampToValueAtTime(150, now + duration); // happy little upward glide
+
+  const lfo = audioCtx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.setValueAtTime(26, now);
+
+  const lfoGain = audioCtx.createGain();
+  lfoGain.gain.value = 0.08; // wobble depth — kept small so it doesn't dip negative
+
+  const outGain = audioCtx.createGain();
+  outGain.gain.setValueAtTime(0.0001, now);
+  outGain.gain.linearRampToValueAtTime(0.22, now + 0.18);
+  outGain.gain.setValueAtTime(0.22, now + duration - 0.35);
+  outGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(outGain.gain); // modulates the gain -> purr-like tremolo
+  carrier.connect(outGain);
+  outGain.connect(audioCtx.destination);
+
+  carrier.start(now);
+  lfo.start(now);
+  carrier.stop(now + duration + 0.05);
+  lfo.stop(now + duration + 0.05);
+}
+
 // A soft, low "boop" for the M4 cat-paw gimmick nudging a block —
 // deliberately understated (this is mischief, not an achievement).
 export function playPawTap() {

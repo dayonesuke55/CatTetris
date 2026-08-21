@@ -35,6 +35,7 @@ h1 {
 }
 
 #game-area {
+  position: relative; /* anchors #breed-card's inset:0 overlay */
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -130,4 +131,55 @@ h1 {
 
 .hidden {
   display: none;
+}
+
+/* M6: the "breed card" celebration overlay. Opacity is driven from JS
+   each frame (fade in/hold/fade out — see main.js) rather than a CSS
+   transition, since it needs to track an animation timeline the same
+   way the M4 paw's alpha does. pointer-events: none so it never blocks
+   input even while visible — it's a passive celebration, not a modal. */
+#breed-card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 16px;
+  background: rgba(30, 24, 38, 0.94);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#breed-card-heading {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+#breed-card-face {
+  background: var(--board-bg);
+  border-radius: 50%;
+  margin-bottom: 6px;
+}
+
+#breed-card-name {
+  font-size: 1.15rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+#breed-card-personality {
+  font-size: 0.85rem;
+}
+
+#breed-card-trivia {
+  font-size: 0.72rem;
+  opacity: 0.75;
+  max-width: 85%;
 }

@@ -44,6 +44,50 @@ export const CAT_STYLES = {
   L: { ear: 'round', eye: 'round', mark: 'stripes' }, // orange tabby
 };
 
+// M6: the real-world breed each type's look is riffing on (see
+// CAT_STYLES comments above), plus a one-line personality and cat-fact
+// trivia. Shown in main.js's "breed card" celebration the moment a
+// type's affection first reaches CONFIG.affection.threshold — meant
+// as a little reward for actual cat lovers, and doubles as the flavor
+// text the planned cat-breed collection milestone (M7) can reuse.
+export const BREED_PROFILES = {
+  I: {
+    name: 'シャム',
+    personality: 'おしゃべりで甘えん坊',
+    trivia: '鳴き声がよく通り、気持ちを声でしっかり伝えてくれる猫種。',
+  },
+  O: {
+    name: 'ブリティッシュショートヘア',
+    personality: 'マイペースで貫禄たっぷり',
+    trivia: '丸いほっぺと落ち着いた性格で「クマみたいな猫」と称されることも。',
+  },
+  T: {
+    name: 'キジトラ',
+    personality: '人懐っこく物怖じしない',
+    trivia: '日本で最もよく見かける柄のひとつ。野生のヤマネコに近い縞模様が特徴。',
+  },
+  S: {
+    name: 'メインクーン',
+    personality: '穏やかで頼れる「優しい巨人」',
+    trivia: '耳先の房毛がトレードマーク。アメリカ原産の猫種の中でも最大級の体格。',
+  },
+  Z: {
+    name: 'スコティッシュフォールド',
+    personality: 'おっとりマイペース、順応力抜群',
+    trivia: '折れ耳が特徴で、1960年代にスコットランドの農場で発見されたのが起源。',
+  },
+  J: {
+    name: 'バーミーズ',
+    personality: '社交的で人にべったり甘えたがり',
+    trivia: 'かつては「シャムの親戚」と考えられていたほど人懐っこい猫種。',
+  },
+  L: {
+    name: '茶トラ',
+    personality: '食いしん坊で愛嬌たっぷり',
+    trivia: 'オレンジ猫はオスの割合が多いことで知られる、日本でも大人気の柄。',
+  },
+};
+
 const SHAPES = {
   I: [
     [[0, 1], [1, 1], [2, 1], [3, 1]],
