@@ -145,6 +145,23 @@ h1 {
   filter: brightness(1.08);
 }
 
+/* M8 follow-up: secondary to #restart-btn (outline, not filled) — same
+   shape as #collection-btn since both are "less primary" actions. */
+#back-to-title-btn {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 20px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+#back-to-title-btn:hover {
+  background: rgba(244, 182, 194, 0.15);
+}
+
 #collection-btn {
   font: inherit;
   font-size: 0.85rem;

@@ -28,6 +28,7 @@ const levelUpFaceCtx = levelUpFaceCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
+const backToTitleBtn = document.getElementById('back-to-title-btn');
 
 // M8: title screen — the real entry point (see index.html). gameContainer
 // stays hidden until titleStartBtn is pressed.
@@ -194,14 +195,12 @@ const state = {
   stats: loadStats(),
 };
 
-// Puts state back to a fresh game. Only meaningful while gameOver is
-// true — see onRestart below.
-function resetState() {
-  // Counts as the start of a new play, same as pressing "ゲームスタート"
-  // from the title screen (see titleStartBtn's click handler below).
-  state.stats.gamesPlayed += 1;
-  saveStats(state.stats);
-
+// Resets the board/piece/timers to a fresh run — shared by resetState()
+// (a direct restart, which counts as a new play) and returnToTitle()
+// (M8 follow-up: going back to the title screen doesn't count as a new
+// play until ゲームスタート is pressed again, but the board underneath
+// still needs to be fresh for when it is).
+function resetRunState() {
   queue = makePieceQueue();
   state.board = createBoard(CONFIG.COLS, CONFIG.ROWS);
   state.current = queue.next();
@@ -219,6 +218,26 @@ function resetState() {
   // (what it's earned so far) is untouched, same as affection/highScore.
   state.sessionCounts = emptySessionCounts();
   closeCollection();
+}
+
+// Puts state back to a fresh game. Only meaningful while gameOver is
+// true — see onRestart below.
+function resetState() {
+  // Counts as the start of a new play, same as pressing "ゲームスタート"
+  // from the title screen (see titleStartBtn's click handler below).
+  state.stats.gamesPlayed += 1;
+  saveStats(state.stats);
+  resetRunState();
+}
+
+// M8 follow-up: game-over's "タイトルへ戻る" — resets the board (so
+// it's ready to go next time ゲームスタート is pressed) and shows the
+// title screen again, but does *not* count as a new play itself.
+function returnToTitle() {
+  resetRunState();
+  state.titleOpen = true;
+  gameContainer.classList.add('hidden');
+  titleScreen.classList.remove('hidden');
 }
 
 function tryMove(dx, dy) {
@@ -542,6 +561,10 @@ restartBtn.addEventListener('click', () => {
   if (state.gameOver) resetState();
 });
 
+backToTitleBtn.addEventListener('click', () => {
+  if (state.gameOver) returnToTitle();
+});
+
 let lastTime = null;
 function loop(timestamp) {
   if (lastTime === null) lastTime = timestamp;
@@ -657,6 +680,7 @@ function loop(timestamp) {
   scoreEl.textContent = `Score: ${state.score}`;
   highScoreEl.textContent = `Best: ${state.highScore}`;
   restartBtn.classList.toggle('hidden', !state.gameOver);
+  backToTitleBtn.classList.toggle('hidden', !state.gameOver);
   if (state.gameOver) drawGameOver(boardCtx, state.score, state.highScore);
 
   fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
