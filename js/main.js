@@ -358,7 +358,7 @@ function renderDetail(type) {
   collectionDetailMilestones.innerHTML = '';
   MILESTONE_COUNTS.forEach((threshold, i) => {
     const unlocked = count >= threshold;
-    const hint = `ラインを${threshold}回消すと解放`;
+    const hint = `ラインを${threshold}回消すとアンロック`;
     collectionDetailMilestones.appendChild(
       buildMilestoneRow(`${threshold}回`, unlocked, profile.milestoneFacts[i], hint)
     );
@@ -375,7 +375,7 @@ function renderDetail(type) {
 
   SESSION_MILESTONE_COUNTS.forEach((threshold, i) => {
     const unlocked = state.sessionUnlocks[type]?.[i] ?? false;
-    const hint = `1プレイでラインを${threshold}回消すと解放`;
+    const hint = `1プレイでラインを${threshold}回消すとアンロック`;
     collectionDetailMilestones.appendChild(
       buildMilestoneRow(`${threshold}回`, unlocked, profile.sessionMilestoneFacts[i], hint, 'session')
     );
@@ -387,7 +387,7 @@ function renderDetail(type) {
       '★特別',
       specialUnlocked,
       profile.specialFact,
-      `ハイスコア${SPECIAL_HIGH_SCORE}以上で解放`,
+      `ハイスコア${SPECIAL_HIGH_SCORE}以上でアンロック`,
       'special'
     )
   );
