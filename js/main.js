@@ -14,7 +14,7 @@ import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 import { loadAffection, saveAffection, recordLineClear, getLevel, isCollected } from './affection.js';
 import { loadSessionUnlocks, saveSessionUnlocks, emptySessionCounts, recordSessionLineClear, updateSessionUnlocks } from './sessionMilestones.js';
 import { loadStats, saveStats } from './stats.js';
-import { loadBgmMuted, saveBgmMuted } from './bgm.js';
+import { loadBgmVolumeLevel, saveBgmVolumeLevel, BGM_VOLUME_LEVELS, BGM_VOLUME_ICONS } from './bgm.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -37,7 +37,7 @@ const backToTitleBtn = document.getElementById('back-to-title-btn');
 // titleOpen rather than driven by a separate state flag.
 const titleBgmAudio = document.getElementById('title-bgm-audio');
 const gameBgmAudio = document.getElementById('game-bgm-audio');
-const bgmMuteBtn = document.getElementById('bgm-mute-btn');
+const bgmVolumeBtn = document.getElementById('bgm-volume-btn');
 
 // M8: title screen — the real entry point (see index.html). gameContainer
 // stays hidden until titleStartBtn is pressed.
@@ -96,19 +96,18 @@ const collectionDetailName = document.getElementById('collection-detail-name');
 const collectionDetailPersonality = document.getElementById('collection-detail-personality');
 const collectionDetailMilestones = document.getElementById('collection-detail-milestones');
 
-// M9: BGM setup. Volume kept modest (SFX/cries play at full volume on
-// top of it) — a fixed level rather than a slider, same "keep the UI
-// minimal" choice as everywhere else in this project.
-let bgmMuted = loadBgmMuted();
-titleBgmAudio.volume = 0.5;
-gameBgmAudio.volume = 0.5;
-titleBgmAudio.muted = bgmMuted;
-gameBgmAudio.muted = bgmMuted;
+// M9: BGM setup. One "off" step plus 3 audible volume steps, cycled by
+// clicking bgmVolumeBtn — a click-to-cycle button rather than a slider,
+// same "keep the UI minimal" choice as everywhere else in this project.
+let bgmVolumeIndex = loadBgmVolumeLevel();
 
-function updateBgmMuteBtn() {
-  bgmMuteBtn.textContent = bgmMuted ? '🔇' : '🔊';
+function applyBgmVolume() {
+  const volume = BGM_VOLUME_LEVELS[bgmVolumeIndex];
+  titleBgmAudio.volume = volume;
+  gameBgmAudio.volume = volume;
+  bgmVolumeBtn.textContent = BGM_VOLUME_ICONS[bgmVolumeIndex];
 }
-updateBgmMuteBtn();
+applyBgmVolume();
 
 // Only one track is ever meant to be audible at a time — switching one
 // on always pauses the other rather than tracking a separate "which
@@ -126,12 +125,10 @@ function playGameBgm() {
   gameBgmAudio.play().catch(() => {});
 }
 
-bgmMuteBtn.addEventListener('click', () => {
-  bgmMuted = !bgmMuted;
-  titleBgmAudio.muted = bgmMuted;
-  gameBgmAudio.muted = bgmMuted;
-  saveBgmMuted(bgmMuted);
-  updateBgmMuteBtn();
+bgmVolumeBtn.addEventListener('click', () => {
+  bgmVolumeIndex = (bgmVolumeIndex + 1) % BGM_VOLUME_LEVELS.length;
+  applyBgmVolume();
+  saveBgmVolumeLevel(bgmVolumeIndex);
 });
 
 // Autoplay policy blocks the very first playTitleBgm() call below (page
