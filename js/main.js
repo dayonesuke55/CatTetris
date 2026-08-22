@@ -13,6 +13,7 @@ import { playMeow, playPawTap, playBreedCry } from './sound.js';
 import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 import { loadAffection, saveAffection, recordLineClear, getLevel, isCollected } from './affection.js';
 import { loadSessionUnlocks, saveSessionUnlocks, emptySessionCounts, recordSessionLineClear, updateSessionUnlocks } from './sessionMilestones.js';
+import { loadStats, saveStats } from './stats.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -27,6 +28,33 @@ const levelUpFaceCtx = levelUpFaceCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
+
+// M8: title screen — the real entry point (see index.html). gameContainer
+// stays hidden until titleStartBtn is pressed.
+const titleScreen = document.getElementById('title-screen');
+const gameContainer = document.getElementById('game-container');
+const titleStartBtn = document.getElementById('title-start-btn');
+const titleRecordsBtn = document.getElementById('title-records-btn');
+const titleCollectionBtn = document.getElementById('title-collection-btn');
+
+// M8: "これまでの記録" overlay — high score/play stats plus a compact
+// per-breed なつき度 summary. A DOM element bundle per type, same
+// pattern as collectionCards below.
+const recordsOverlay = document.getElementById('records-overlay');
+const recordsCloseBtn = document.getElementById('records-close-btn');
+const recordsHighScoreEl = document.getElementById('records-high-score');
+const recordsGamesPlayedEl = document.getElementById('records-games-played');
+const recordsLinesClearedEl = document.getElementById('records-lines-cleared');
+const recordsAffectionCards = Object.fromEntries(
+  PIECE_TYPES.map((type) => [
+    type,
+    {
+      card: document.getElementById(`records-affection-card-${type}`),
+      faceCtx: document.getElementById(`records-affection-face-${type}`).getContext('2d'),
+      level: document.getElementById(`records-affection-level-${type}`),
+    },
+  ])
+);
 
 // M7: collection view — a DOM element bundle per type rather than 7
 // separate named consts, since every card is rendered identically
@@ -156,11 +184,24 @@ const state = {
   // SESSION_MILESTONE_COUNTS tiers have ever been reached in a single
   // unbroken game. Once true, stays true forever.
   sessionUnlocks: loadSessionUnlocks(),
+  // M8: true until "ゲームスタート" is pressed on the title screen —
+  // pauses gameplay input and timers the same way collectionOpen does
+  // (see tryMove/tryRotate/hardDrop/softDropTick and the loop below).
+  titleOpen: true,
+  // M8: cumulative play stats ({ gamesPlayed, linesCleared }) shown on
+  // the title screen's records view — persists across games like
+  // affection/highScore, not reset by resetState() below.
+  stats: loadStats(),
 };
 
 // Puts state back to a fresh game. Only meaningful while gameOver is
 // true — see onRestart below.
 function resetState() {
+  // Counts as the start of a new play, same as pressing "ゲームスタート"
+  // from the title screen (see titleStartBtn's click handler below).
+  state.stats.gamesPlayed += 1;
+  saveStats(state.stats);
+
   queue = makePieceQueue();
   state.board = createBoard(CONFIG.COLS, CONFIG.ROWS);
   state.current = queue.next();
@@ -181,7 +222,7 @@ function resetState() {
 }
 
 function tryMove(dx, dy) {
-  if (state.gameOver || state.collectionOpen) return false;
+  if (state.gameOver || state.collectionOpen || state.titleOpen) return false;
   const moved = { ...state.current, x: state.current.x + dx, y: state.current.y + dy };
   if (isValidPosition(state.board, getCells(moved))) {
     state.current = moved;
@@ -191,7 +232,7 @@ function tryMove(dx, dy) {
 }
 
 function tryRotate(dir) {
-  if (state.gameOver || state.collectionOpen) return;
+  if (state.gameOver || state.collectionOpen || state.titleOpen) return;
   const { rotation, cells } = getRotatedCells(state.current, dir);
   if (isValidPosition(state.board, cells)) {
     state.current = { ...state.current, rotation };
@@ -267,6 +308,11 @@ function lockCurrentPiece() {
     clearRows(state.board, fullRows);
     state.score += CONFIG.LINE_SCORES[fullRows.length] ?? 0;
     playMeow(fullRows.length);
+
+    // M8: cumulative across every game ever played, shown on the title
+    // screen's records view — distinct from affection's per-type count.
+    state.stats.linesCleared += fullRows.length;
+    saveStats(state.stats);
   }
 
   spawnNext();
@@ -274,16 +320,16 @@ function lockCurrentPiece() {
 
 function softDropTick() {
   // Checked directly (not just via tryMove's own guard) — tryMove
-  // returning false while the collection view is open must not be
-  // mistaken for "hit bottom, lock it".
-  if (state.gameOver || state.collectionOpen) return;
+  // returning false while the collection view (or the title screen) is
+  // open must not be mistaken for "hit bottom, lock it".
+  if (state.gameOver || state.collectionOpen || state.titleOpen) return;
   if (!tryMove(0, 1)) {
     lockCurrentPiece();
   }
 }
 
 function hardDrop() {
-  if (state.gameOver || state.collectionOpen) return;
+  if (state.gameOver || state.collectionOpen || state.titleOpen) return;
   while (tryMove(0, 1)) {
     // keep dropping until it lands
   }
@@ -416,17 +462,69 @@ function closeCollection() {
   showCollectionGrid(); // reset for next time it's opened
 }
 
-collectionBtn.addEventListener('click', () => {
+// Shared by the in-game 🐾 button and the title screen's 図鑑 button
+// (M8) — same overlay either way.
+function openCollection() {
   renderCollection();
   collectionOverlay.classList.remove('hidden');
   state.collectionOpen = true;
-});
+}
+
+collectionBtn.addEventListener('click', openCollection);
+titleCollectionBtn.addEventListener('click', openCollection);
 
 collectionCloseBtn.addEventListener('click', closeCollection);
 
 // Clicking the dimmed backdrop (not the panel itself) also closes it.
 collectionOverlay.addEventListener('click', (e) => {
   if (e.target === collectionOverlay) closeCollection();
+});
+
+// M8: "これまでの記録" — fills in high score/play stats plus each
+// breed's current affection level (locked/silhouetted the same way as
+// an unmet 図鑑 card, so a breed's face isn't spoiled here first).
+// Called once when the view opens, same reasoning as renderCollection.
+function renderRecords() {
+  recordsHighScoreEl.textContent = String(state.highScore);
+  recordsGamesPlayedEl.textContent = String(state.stats.gamesPlayed);
+  recordsLinesClearedEl.textContent = String(state.stats.linesCleared);
+
+  PIECE_TYPES.forEach((type) => {
+    const { card, faceCtx, level } = recordsAffectionCards[type];
+    const met = isCollected(state.affection, type);
+
+    faceCtx.clearRect(0, 0, faceCtx.canvas.width, faceCtx.canvas.height);
+    drawCatBlock(faceCtx, 0, 0, type, faceCtx.canvas.width);
+
+    card.classList.toggle('locked', !met);
+    level.textContent = `Lv.${getLevel(state.affection, type)}`;
+  });
+}
+
+function openRecords() {
+  renderRecords();
+  recordsOverlay.classList.remove('hidden');
+}
+
+function closeRecords() {
+  recordsOverlay.classList.add('hidden');
+}
+
+titleRecordsBtn.addEventListener('click', openRecords);
+recordsCloseBtn.addEventListener('click', closeRecords);
+recordsOverlay.addEventListener('click', (e) => {
+  if (e.target === recordsOverlay) closeRecords();
+});
+
+// M8: leaving the title screen counts as starting a play, same as a
+// post-game-over restart (see resetState) — tracked here rather than
+// there since the very first game never goes through resetState().
+titleStartBtn.addEventListener('click', () => {
+  state.stats.gamesPlayed += 1;
+  saveStats(state.stats);
+  state.titleOpen = false;
+  titleScreen.classList.add('hidden');
+  gameContainer.classList.remove('hidden');
 });
 
 bindInput({
@@ -450,7 +548,7 @@ function loop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
-  if (!state.gameOver && !state.collectionOpen) {
+  if (!state.gameOver && !state.collectionOpen && !state.titleOpen) {
     state.dropTimer += dt;
     if (state.dropTimer >= state.dropInterval) {
       state.dropTimer = 0;

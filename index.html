@@ -7,7 +7,23 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="game-container">
+  <!-- M8: title screen — the page's actual entry point. Shown first;
+       #game-container stays hidden until "ゲームスタート" is pressed
+       (see main.js). Kept as a plain sibling div (not an overlay) since
+       nothing needs to render behind it while it's up. -->
+  <div id="title-screen">
+    <div id="title-panel">
+      <h1>CatTetris 🐾</h1>
+      <p id="title-tagline">ネコ好きに受けるテトリス</p>
+      <div id="title-buttons">
+        <button id="title-start-btn" type="button">ゲームスタート</button>
+        <button id="title-records-btn" type="button">これまでの記録</button>
+        <button id="title-collection-btn" type="button">🐾 図鑑を見る</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="game-container" class="hidden">
     <h1>CatTetris 🐾</h1>
     <div id="game-area">
       <div id="canvas-stack">
@@ -104,6 +120,64 @@
           <div id="collection-detail-personality"></div>
         </div>
         <div id="collection-detail-milestones"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- M8: "これまでの記録" — high score + cumulative play stats plus a
+       compact per-breed なつき度 summary (level only; name/personality
+       stay behind the 図鑑 detail page, same lock look as its cards).
+       Reachable from the title screen only for now. -->
+  <div id="records-overlay" class="hidden">
+    <div id="records-panel">
+      <button id="records-close-btn" type="button">×</button>
+      <div id="records-header">これまでの記録</div>
+
+      <div id="records-stats">
+        <div class="records-stat">
+          <span class="records-stat-label">ハイスコア</span>
+          <span class="records-stat-value" id="records-high-score">0</span>
+        </div>
+        <div class="records-stat">
+          <span class="records-stat-label">総プレイ回数</span>
+          <span class="records-stat-value" id="records-games-played">0</span>
+        </div>
+        <div class="records-stat">
+          <span class="records-stat-label">総ライン消去数</span>
+          <span class="records-stat-value" id="records-lines-cleared">0</span>
+        </div>
+      </div>
+
+      <div id="records-affection-header">猫種なつき度</div>
+      <div id="records-affection-grid">
+        <div class="records-affection-card" id="records-affection-card-I">
+          <canvas class="records-affection-face" id="records-affection-face-I" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-I"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-O">
+          <canvas class="records-affection-face" id="records-affection-face-O" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-O"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-T">
+          <canvas class="records-affection-face" id="records-affection-face-T" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-T"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-S">
+          <canvas class="records-affection-face" id="records-affection-face-S" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-S"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-Z">
+          <canvas class="records-affection-face" id="records-affection-face-Z" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-Z"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-J">
+          <canvas class="records-affection-face" id="records-affection-face-J" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-J"></div>
+        </div>
+        <div class="records-affection-card" id="records-affection-card-L">
+          <canvas class="records-affection-face" id="records-affection-face-L" width="48" height="48"></canvas>
+          <div class="records-affection-level" id="records-affection-level-L"></div>
+        </div>
       </div>
     </div>
   </div>

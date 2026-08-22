@@ -29,6 +29,14 @@ body {
   padding: 16px;
 }
 
+/* M8: needed because #game-container's own `display: flex` (an ID
+   rule) otherwise outranks .hidden's `display: none` (a class rule) by
+   specificity, even while .hidden is applied — same gotcha M7's
+   #collection-overlay had. */
+#game-container.hidden {
+  display: none;
+}
+
 h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -155,6 +163,76 @@ h1 {
 
 .hidden {
   display: none;
+}
+
+/* M8: title screen — the page's real entry point. Plain centered panel
+   (not a fixed overlay) since #game-container is hidden behind it, not
+   dimmed behind it. */
+#title-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 16px;
+}
+
+/* Same ID-vs-.hidden specificity fix #collection-overlay needed (see
+   below) — #title-screen has its own `display: flex` above. */
+#title-screen.hidden {
+  display: none;
+}
+
+#title-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 40px;
+  background: var(--panel-bg);
+  border-radius: 12px;
+}
+
+#title-tagline {
+  margin: -12px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+#title-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 220px;
+}
+
+#title-buttons button {
+  font: inherit;
+  font-weight: bold;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#title-start-btn {
+  background: var(--accent);
+  color: var(--board-bg);
+}
+
+#title-start-btn:hover {
+  filter: brightness(1.08);
+}
+
+#title-records-btn,
+#title-collection-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--text);
+}
+
+#title-records-btn:hover,
+#title-collection-btn:hover {
+  background: rgba(244, 182, 194, 0.15);
 }
 
 /* M7: cat-breed collection. Opened on demand (not auto-popped during
@@ -378,4 +456,118 @@ h1 {
 
 .milestone-row.session .milestone-count {
   color: #8fe0a0;
+}
+
+/* M8: "これまでの記録" — same fixed-overlay/panel shape as
+   #collection-overlay above (including its ID-vs-.hidden specificity
+   fix), reached from the title screen. */
+#records-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+#records-overlay.hidden {
+  display: none;
+}
+
+#records-panel {
+  position: relative;
+  background: var(--panel-bg);
+  border-radius: 12px;
+  padding: 16px 20px;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+#records-header {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 12px;
+  padding-right: 24px;
+}
+
+#records-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font: inherit;
+  font-size: 1.2rem;
+  line-height: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+#records-close-btn:hover {
+  color: var(--accent);
+}
+
+#records-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.records-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--board-bg);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.records-stat-value {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+#records-affection-header {
+  font-size: 0.85rem;
+  font-weight: bold;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+#records-affection-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.records-affection-card {
+  width: 64px;
+  text-align: center;
+}
+
+.records-affection-face {
+  background: var(--board-bg);
+  border-radius: 50%;
+}
+
+.records-affection-level {
+  font-size: 0.7rem;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+/* Not yet met (see affection.js's isCollected) — same silhouette
+   treatment as the locked 図鑑 cards, so a breed's face isn't spoiled
+   here first. */
+.records-affection-card.locked .records-affection-face {
+  filter: brightness(0) opacity(0.45);
+}
+
+.records-affection-card.locked .records-affection-level {
+  opacity: 0.5;
 }
