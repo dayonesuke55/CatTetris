@@ -7,6 +7,14 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+  <!-- M9: BGM — one looping track for the title screen, one for
+       in-game (see main.js's playTitleBgm/playGameBgm). Not visual
+       elements, so kept outside both screens' markup rather than
+       duplicated into each. -->
+  <audio id="title-bgm-audio" src="assets/audio/title-bgm.mp3" loop preload="auto"></audio>
+  <audio id="game-bgm-audio" src="assets/audio/game-bgm.wav" loop preload="auto"></audio>
+  <button id="bgm-mute-btn" type="button" title="BGMミュート切替">🔊</button>
+
   <!-- M8: title screen — the page's actual entry point. Shown first;
        #game-container stays hidden until "ゲームスタート" is pressed
        (see main.js). Kept as a plain sibling div (not an overlay) since

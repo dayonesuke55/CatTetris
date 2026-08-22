@@ -185,6 +185,28 @@ h1 {
   display: none;
 }
 
+/* M9: BGM mute toggle — fixed so it's reachable from the title screen,
+   in-game, and even over the 図鑑/記録 overlays (z-index above their
+   20) without needing its own copy in each screen's markup. */
+#bgm-mute-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 30;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--panel-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+#bgm-mute-btn:hover {
+  background: rgba(244, 182, 194, 0.15);
+}
+
 /* M8: title screen — the page's real entry point. Plain centered panel
    (not a fixed overlay) since #game-container is hidden behind it, not
    dimmed behind it. */

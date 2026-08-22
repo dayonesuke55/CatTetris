@@ -50,6 +50,11 @@ MVP完成後のフェーズ:
 - [x] M8: トップページ（タイトル画面）を追加する（「ゲームスタート」「これまでの記録」「図鑑を見る」の導線をまとめる。「これまでの記録」はハイスコアに加え、累計プレイ回数・累計ライン消去数などのプレイ統計と、7猫種のなつき度レベルを一覧できる簡易サマリーを表示する。ゲームオーバー時は「タイトルへ」ボタンでこの画面に戻れる）
 - [ ] M9: BGMを追加する（タイトル画面用・ゲーム中用を別トラックで設定）
 
+## 使用素材
+
+- タイトル画面BGM: [8-bit Haunted House Theme](https://opengameart.org/content/8-bit-haunted-house-theme) by Wolfgang_（CC0）
+- ゲーム中BGM: [Bonus Round - 8bit](https://opengameart.org/content/bonus-round-8bit) by Wolfgang_（CC0）
+
 ## ライセンス
 
 未定

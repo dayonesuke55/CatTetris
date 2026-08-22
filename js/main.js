@@ -14,6 +14,7 @@ import { planPawSwipe, applyPawSwipe } from './catPaw.js';
 import { loadAffection, saveAffection, recordLineClear, getLevel, isCollected } from './affection.js';
 import { loadSessionUnlocks, saveSessionUnlocks, emptySessionCounts, recordSessionLineClear, updateSessionUnlocks } from './sessionMilestones.js';
 import { loadStats, saveStats } from './stats.js';
+import { loadBgmMuted, saveBgmMuted } from './bgm.js';
 
 const boardCanvas = document.getElementById('board-canvas');
 const boardCtx = boardCanvas.getContext('2d');
@@ -29,6 +30,14 @@ const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('high-score');
 const restartBtn = document.getElementById('restart-btn');
 const backToTitleBtn = document.getElementById('back-to-title-btn');
+
+// M9: BGM — one looping track for the title screen, one for in-game.
+// Only one is ever meant to be audible at a time (see playTitleBgm/
+// playGameBgm below), switched at the same transitions that toggle
+// titleOpen rather than driven by a separate state flag.
+const titleBgmAudio = document.getElementById('title-bgm-audio');
+const gameBgmAudio = document.getElementById('game-bgm-audio');
+const bgmMuteBtn = document.getElementById('bgm-mute-btn');
 
 // M8: title screen — the real entry point (see index.html). gameContainer
 // stays hidden until titleStartBtn is pressed.
@@ -86,6 +95,56 @@ const collectionDetailFaceCtx = document.getElementById('collection-detail-face'
 const collectionDetailName = document.getElementById('collection-detail-name');
 const collectionDetailPersonality = document.getElementById('collection-detail-personality');
 const collectionDetailMilestones = document.getElementById('collection-detail-milestones');
+
+// M9: BGM setup. Volume kept modest (SFX/cries play at full volume on
+// top of it) — a fixed level rather than a slider, same "keep the UI
+// minimal" choice as everywhere else in this project.
+let bgmMuted = loadBgmMuted();
+titleBgmAudio.volume = 0.5;
+gameBgmAudio.volume = 0.5;
+titleBgmAudio.muted = bgmMuted;
+gameBgmAudio.muted = bgmMuted;
+
+function updateBgmMuteBtn() {
+  bgmMuteBtn.textContent = bgmMuted ? '🔇' : '🔊';
+}
+updateBgmMuteBtn();
+
+// Only one track is ever meant to be audible at a time — switching one
+// on always pauses the other rather than tracking a separate "which
+// screen" flag, since titleOpen already is that flag.
+function playTitleBgm() {
+  gameBgmAudio.pause();
+  titleBgmAudio.play().catch(() => {
+    // Blocked by the browser's autoplay policy (no user gesture yet on
+    // page load) — bgmUnlock below retries on the first click/keydown.
+  });
+}
+
+function playGameBgm() {
+  titleBgmAudio.pause();
+  gameBgmAudio.play().catch(() => {});
+}
+
+bgmMuteBtn.addEventListener('click', () => {
+  bgmMuted = !bgmMuted;
+  titleBgmAudio.muted = bgmMuted;
+  gameBgmAudio.muted = bgmMuted;
+  saveBgmMuted(bgmMuted);
+  updateBgmMuteBtn();
+});
+
+// Autoplay policy blocks the very first playTitleBgm() call below (page
+// load has had no user gesture yet) — this one-time listener retries as
+// soon as the player does anything at all, resuming whichever track
+// should currently be playing (titleOpen may have already flipped to
+// false by then, e.g. if their first-ever click is ゲームスタート itself).
+function unlockBgmOnFirstGesture() {
+  if (state.titleOpen) playTitleBgm();
+  else playGameBgm();
+}
+document.addEventListener('pointerdown', unlockBgmOnFirstGesture, { once: true });
+document.addEventListener('keydown', unlockBgmOnFirstGesture, { once: true });
 
 // fx-canvas is wider than the board (see index.html) so the M4 cat
 // paw can visibly reach in from beyond the play area instead of
@@ -238,6 +297,7 @@ function returnToTitle() {
   state.titleOpen = true;
   gameContainer.classList.add('hidden');
   titleScreen.classList.remove('hidden');
+  playTitleBgm();
 }
 
 function tryMove(dx, dy) {
@@ -544,6 +604,7 @@ titleStartBtn.addEventListener('click', () => {
   state.titleOpen = false;
   titleScreen.classList.add('hidden');
   gameContainer.classList.remove('hidden');
+  playGameBgm();
 });
 
 bindInput({
@@ -689,3 +750,7 @@ function loop(timestamp) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+// Best-effort — almost always blocked by the browser's autoplay policy
+// this early (see unlockBgmOnFirstGesture above for the real start).
+playTitleBgm();
